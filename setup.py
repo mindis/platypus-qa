@@ -52,18 +52,18 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Application'
     ],
     install_requires=[
-        'requests',
+        'requests>=2.0,<3.0',
         'ppp_datamodel>=0.6.11',
-        'nltk',
-        'dateparser',
-        'ppp_cas',
-        'langdetect',
-        'PyLD',
-        'Flask',
+        'nltk>=3.0,<4.0',
+        'dateparser>=0.5,<0.6',
+        'ppp_cas>=0.8',
+        'langdetect>=1.0,<2.0',
+        'PyLD>=0.7,<0.8',
+        'Flask>=0.12',
         'flask-swaggerui>=0.0.1',
-        'flask-cors>=3.0<4.0'
+        'flask-cors>=3.0,<4.0'
     ],
-    setup_requires=['nltk'],
+    setup_requires=['nltk>=3.0,<4.0'],
     packages=find_packages(),
     cmdclass={'install': CustomInstall},
     test_suite='tests'
