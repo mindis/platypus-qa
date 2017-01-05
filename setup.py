@@ -60,8 +60,8 @@ setup(
         'langdetect',
         'PyLD',
         'Flask',
-        'flask-swaggerui',
-        'flask-cors'
+        'flask-swaggerui>=0.0.1',
+        'flask-cors>=3.0<4.0'
     ],
     setup_requires=['nltk'],
     packages=find_packages(),
