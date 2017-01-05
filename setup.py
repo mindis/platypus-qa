@@ -61,7 +61,9 @@ setup(
         'PyLD>=0.7,<0.8',
         'Flask>=0.12',
         'flask-swaggerui>=0.0.1',
-        'flask-cors>=3.0,<4.0'
+        'flask-cors>=3.0,<4.0',
+        'sympy>=1.0,<2.0',
+        'ply>=3.6,<4.0'
     ],
     setup_requires=['nltk>=3.0,<4.0'],
     packages=find_packages(),
