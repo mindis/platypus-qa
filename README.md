@@ -1,6 +1,8 @@
 Platypus QA
 ===========
 
+[![Build Status](https://travis-ci.org/askplatypus/platypus-qa.svg?branch=master)](https://travis-ci.org/askplatypus/platypus-qa)
+
 Platypus QA is the question answering service of Platypus.
 You could see it live at [qa.dev.askplatyp.us](http://qa.dev.askplatyp.us)
 
