@@ -63,6 +63,7 @@ setup(
         'flask-swaggerui',
         'flask-cors'
     ],
+    setup_requires=['nltk'],
     packages=find_packages(),
     cmdclass={'install': CustomInstall},
     test_suite='tests'
