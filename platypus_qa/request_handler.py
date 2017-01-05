@@ -51,7 +51,7 @@ _syntaxnet_parser = SyntaxNetParser(['http://syntaxnet.askplatyp.us/v1/parsey-un
 _knowledge_base = WikidataKnowledgeBase(compacted_individuals=True)
 _default_meas = {'accuracy': 0.5, 'relevance': 0.5}
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 def _safe_response_builder(func):

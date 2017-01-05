@@ -18,8 +18,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import logging
-
 from flask import Flask, request
 from flask import redirect
 from flask.json import jsonify
@@ -30,8 +28,6 @@ from ppp_datamodel.exceptions import AttributeNotProvided
 from werkzeug.exceptions import BadRequest
 
 from platypus_qa.request_handler import PPPRequestHandler, WikidataSparqlHandler
-
-logging.basicConfig(level=logging.INFO)
 
 # Flask setup
 _flask_app = Flask(__name__)

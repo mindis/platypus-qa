@@ -114,7 +114,7 @@ _knowledge_base = SimpleKnowledgeBase(
 _x = VariableFormula('x')
 _y = VariableFormula('y')
 _z = VariableFormula('z')
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 _parsed_sentences = {
     'Bob Marley?':
