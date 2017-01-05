@@ -1,6 +1,6 @@
 language: python
 python:
-  - py3.5
+  - 3.5
 before_script:
   - python setup.py install
 script: python setup.py test
