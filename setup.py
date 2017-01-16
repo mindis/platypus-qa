@@ -67,6 +67,7 @@ setup(
     ],
     setup_requires=['nltk>=3.0,<4.0'],
     packages=find_packages(),
+    package_data={'platypus_qa': ['ppp-cas-config.json']},
     cmdclass={'install': CustomInstall},
     test_suite='tests'
 )

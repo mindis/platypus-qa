@@ -40,7 +40,7 @@ from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.model import NLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 
-os.environ['PPP_CAS_CONFIG'] = os.path.dirname(os.path.abspath(__file__)) + '/../ppp-cas-config.json'
+os.environ['PPP_CAS_CONFIG'] = os.path.dirname(os.path.abspath(__file__)) + '/ppp-cas-config.json'
 from ppp_cas import evaluator, notation
 from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
 from ppp_datamodel.communication import TraceItem, Response
