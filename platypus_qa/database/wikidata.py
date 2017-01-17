@@ -53,6 +53,7 @@ _wikidata_datatype_map = {
     'xsd:gYearMonth': xsd_gYearMonth,
     'xsd:integer': xsd_integer,
     'xsd:string': xsd_string,
+    'geo:wktLiteral': geo_wktLiteral,
     'GeoCoordinates': geo_wktLiteral  # TODO: backward compatibility, remove
 }
 _wikidata_class_map = {
@@ -124,7 +125,9 @@ class _WikidataDataProperty(DataProperty):
 class _WikidataObjectProperty(ObjectProperty):
     def __init__(self, json_ld: Dict):
         super().__init__(
-            iri=json_ld['@id'].replace('wd:', 'http://www.wikidata.org/prop/direct/'),
+            iri=json_ld['@id'].replace('wd:',
+                                       'http://www.wikidata.org/prop/direct/')  # TODO: backward compatibility, remove
+                .replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
             range=self._parse_range(find_range(json_ld))
         )
 
@@ -428,9 +431,8 @@ class WikidataKnowledgeBase(KnowledgeBase):
     @lru_cache(maxsize=8192)
     def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) \
             -> List[Function[Formula]]:
-        results = self._execute_entity_search(label, language_code, type_filter.iri)
-        if not results and type_filter is not None:
-            results = self._execute_entity_search(label, language_code, 'Thing')  # TODO: convert to NamedIndividual
+        type_filter = type_filter.iri if type_filter != owl_Thing else None
+        results = self._execute_entity_search(label, language_code, type_filter)
         var = self._variable_for_name(label)
         if self._compacted_individuals:
             if not results:
@@ -463,10 +465,11 @@ class WikidataKnowledgeBase(KnowledgeBase):
     def _variable_for_name(name: str):
         return VariableFormula(''.join([c for c in name if c.isalnum()]))
 
-    def _execute_entity_search(self, label: str, language_code: str, type_filter: str):
-        response = self._request_session_kb.get(self._kb_wikidata_uri + '/search/simple',
-                                                params={'q': label, 'lang': language_code, 'type': type_filter,
-                                                        'limit': 1000})  # TODO: configure limit?
+    def _execute_entity_search(self, label: str, language_code: str, type_filter: Optional[str]):
+        params = {'q': label, 'lang': language_code, 'limit': 1000}  # TODO: configure limit?
+        if type_filter is not None:
+            params['type'] = type_filter
+        response = self._request_session_kb.get(self._kb_wikidata_uri + '/search/simple', params=params)
         try:
             return [result['result'] for result in response.json()['member']]
         except JSONDecodeError:
