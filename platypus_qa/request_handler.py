@@ -51,8 +51,6 @@ _syntaxnet_parser = SyntaxNetParser(['http://syntaxnet.askplatyp.us/v1/parsey-un
 _knowledge_base = WikidataKnowledgeBase(compacted_individuals=True)
 _default_meas = {'accuracy': 0.5, 'relevance': 0.5}
 
-logging.basicConfig(level=logging.WARNING)
-
 
 def _safe_response_builder(func):
     def func_wrapper(self, *args):
@@ -152,7 +150,7 @@ class PPPRequestHandler:
         if not isinstance(tree, Sentence) or self._language != 'en':
             return []
         return self._do_with_terms(
-            LegacyGrammaticalAnalyzer(_knowledge_base).analyze(tree.value, 'en'),
+            LegacyGrammaticalAnalyzer(_knowledge_base).analyze(tree.value, self._language),
             'PPP-NLP-Grammatical'
         )
 
@@ -274,14 +272,15 @@ class WikidataSparqlHandler:
                 executor.submit(self._do_with_grammatical_analysis, _core_nlp_parser),
                 executor.submit(self._do_with_grammatical_analysis, _syntaxnet_parser)
             ]
-            sparql = _first_future_with_cond(futures, bool, [])
+            sparql = _first_future_with_cond(futures, bool, None)
             if sparql is None:
                 raise NotFound('Not able to build a good SPARQL question for the {} question "{}"'.format(
                     self._question_language_code, self._question
                 ))
             return current_app.response_class(sparql, mimetype='application/sparql-query')
 
-    def _clean_language_code(self, language_code: str, text: str):
+    @staticmethod
+    def _clean_language_code(language_code: str, text: str):
         if language_code == 'und':
             return langdetect.detect(text)  # TODO: more clever
         return language_code
@@ -294,7 +293,7 @@ class WikidataSparqlHandler:
     @_safe_response_builder
     def _do_with_legacy_en_grammatical_analysis(self):
         if self._question_language_code != 'en':
-            return []
+            return None
         return self._do_with_terms(
             LegacyGrammaticalAnalyzer(self._knowledge_base).analyze(self._question, self._question_language_code)
         )

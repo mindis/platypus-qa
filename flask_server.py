@@ -17,6 +17,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
+import logging
 
 from flask import Flask, request
 from flask import redirect
@@ -29,14 +30,16 @@ from werkzeug.exceptions import BadRequest
 
 from platypus_qa.request_handler import PPPRequestHandler, WikidataSparqlHandler
 
+logging.basicConfig(level=logging.WARNING)
+
 # Flask setup
-_flask_app = Flask(__name__)
-_flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-CORS(_flask_app)
+app = Flask(__name__)
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+CORS(app)
 _wikidata_sparql_handler = WikidataSparqlHandler()
 
 
-@_flask_app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def root():
     if request.method == 'GET':
         return redirect('/v0')
@@ -53,17 +56,17 @@ def root():
     return jsonify([x.as_dict() for x in PPPRequestHandler(ppp_request).answer()])
 
 
-@_flask_app.route('/v0/wikidata-sparql', methods=['GET'])
+@app.route('/v0/wikidata-sparql', methods=['GET'])
 def wikidata_sparql():
     return _wikidata_sparql_handler.build_sparql()
 
 
-@_flask_app.route('/v0')
+@app.route('/v0')
 def v0root():
     return render_swaggerui(swagger_spec_path='/v0/swagger.json')
 
 
-@_flask_app.route('/v0/swagger.json')
+@app.route('/v0/swagger.json')
 def spec():
     return jsonify({
         'swagger': '2.0',
@@ -115,6 +118,7 @@ def spec():
     })
 
 
-_flask_app.register_blueprint(build_static_blueprint('swaggerui', __name__))
+app.register_blueprint(build_static_blueprint('swaggerui', __name__))
 
-_flask_app.run(port=8000)
+if __name__ == '__main__':
+    app.run(port=8000)

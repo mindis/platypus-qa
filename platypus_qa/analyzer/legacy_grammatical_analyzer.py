@@ -43,7 +43,7 @@ class LegacyGrammaticalAnalyzer:
         self._ppp_datamodel_converter = FromPPPDataModelConverter(knowledge_base, 'en')
 
     @lru_cache(maxsize=1024)
-    def analyze(self, text: str, language_code: str) -> List[Formula]:
+    def analyze(self, text: str, language_code: str = 'en') -> List[Formula]:
         if language_code != 'en':
             raise ValueError('Only English is supported by the legacy grammatical analyzer')
 
