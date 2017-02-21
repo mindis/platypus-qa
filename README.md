@@ -22,6 +22,13 @@ To run the Platypus QA server on port 8000:
 python3 flask_server.py
 ```
 
+To build the docker file:
+```
+docker build . -t platypus-qa
+```
+
+It creates a docker image named `platypus-qa` listening on port 8000.
+
 
 ## Quick introduction
 
