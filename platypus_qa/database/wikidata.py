@@ -53,11 +53,9 @@ _wikidata_datatype_map = {
     'xsd:gYearMonth': xsd_gYearMonth,
     'xsd:integer': xsd_integer,
     'xsd:string': xsd_string,
-    'geo:wktLiteral': geo_wktLiteral,
-    'GeoCoordinates': geo_wktLiteral  # TODO: backward compatibility, remove
+    'geo:wktLiteral': geo_wktLiteral
 }
 _wikidata_class_map = {
-    'Thing': owl_Thing,  # TODO: backward compatibility, remove
     'NamedIndividual': owl_NamedIndividual,
     'Property': rdf_Property
 }
@@ -100,8 +98,6 @@ class _WikidataItem(NamedIndividual):
 def find_range(json_ld: Dict):
     if 'range' in json_ld:
         return json_ld['range']
-    elif 'rangeIncludes' in json_ld and len(json_ld['rangeIncludes']) > 0:  # TODO: backward compatibility, remove
-        return json_ld['rangeIncludes'][0]
     else:
         raise ValueError('No range provided')
 
@@ -109,9 +105,7 @@ def find_range(json_ld: Dict):
 class _WikidataDataProperty(DataProperty):
     def __init__(self, json_ld: Dict):
         super().__init__(
-            iri=json_ld['@id'].replace('wd:',
-                                       'http://www.wikidata.org/prop/direct/')  # TODO: backward compatibility, remove
-                .replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
+            iri=json_ld['@id'].replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
             range=self._parse_range(find_range(json_ld))
         )
 
@@ -125,9 +119,7 @@ class _WikidataDataProperty(DataProperty):
 class _WikidataObjectProperty(ObjectProperty):
     def __init__(self, json_ld: Dict):
         super().__init__(
-            iri=json_ld['@id'].replace('wd:',
-                                       'http://www.wikidata.org/prop/direct/')  # TODO: backward compatibility, remove
-                .replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
+            iri=json_ld['@id'].replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
             range=self._parse_range(find_range(json_ld))
         )
 
@@ -384,9 +376,9 @@ _s = VariableFormula('s')
 _o = VariableFormula('o')
 
 _property_child = ValueFormula(
-    _WikidataObjectProperty({'@id': 'wdt:P40', '@type': ['ObjectProperty'], 'range': 'Thing'}))
+    _WikidataObjectProperty({'@id': 'wdt:P40', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}))
 _property_sex = ValueFormula(
-    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'Thing'}))
+    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}))
 _item_male = ValueFormula(_WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']}))
 _item_female = ValueFormula(_WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']}))
 _hadcoded_relations = {
@@ -404,16 +396,13 @@ _hadcoded_relations = {
 }
 
 _type_relations = [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p), _o))) for p in [
-    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'Thing'}),  # sex
-    _WikidataObjectProperty({'@id': 'wdt:P27', '@type': ['ObjectProperty'], 'range': 'Thing'}),  # citizenship
-    _WikidataObjectProperty({'@id': 'wdt:P31', '@type': ['ObjectProperty'], 'range': 'Thing'}),  # instance of
-    _WikidataObjectProperty({'@id': 'wdt:P105', '@type': ['ObjectProperty'], 'range': 'Thing'}),  # taxon rank
-    _WikidataObjectProperty({'@id': 'wdt:P106', '@type': ['ObjectProperty'], 'range': 'Thing'}),  # occupation
-    _WikidataObjectProperty({'@id': 'wdt:P136', '@type': ['ObjectProperty'], 'range': 'Thing'})  # genre
+    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # sex
+    _WikidataObjectProperty({'@id': 'wdt:P27', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # citizenship
+    _WikidataObjectProperty({'@id': 'wdt:P31', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # instance of
+    _WikidataObjectProperty({'@id': 'wdt:P105', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # taxon rank
+    _WikidataObjectProperty({'@id': 'wdt:P106', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # occupation
+    _WikidataObjectProperty({'@id': 'wdt:P136', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'})  # genre
 ]]
-
-
-# TODO: convert range to NamedIndividual
 
 
 class WikidataKnowledgeBase(KnowledgeBase):
@@ -452,11 +441,12 @@ class WikidataKnowledgeBase(KnowledgeBase):
 
     @staticmethod
     def _build_property(json_ld: Dict) -> Property:
-        if 'ObjectProperty' in json_ld['@type'] or ('rangeIncludes' in json_ld and 'Thing' in json_ld['rangeIncludes']):
-            # TODO: backward compatiblity, remove
+        if 'ObjectProperty' in json_ld['@type']:
             return _WikidataObjectProperty(json_ld)
-        else:
+        elif 'DatatypeProperty' in json_ld['@type']:
             return _WikidataDataProperty(json_ld)
+        else:
+            raise ValueError('Unknown type for property {}'.format(json_ld))
 
     def type_relations(self) -> List[Function[Function[Formula]]]:
         return _type_relations

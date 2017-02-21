@@ -33,8 +33,8 @@ from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import owl_Thing, Entity, Literal, rdfs_Literal
 from platypus_qa.database.wikidata import _WikidataObjectProperty, _WikidataItem
 
-_wikidata_property_child = _WikidataObjectProperty({'@id': 'wdt:P40', 'range': 'Thing'})
-_wikidata_property_sex = _WikidataObjectProperty({'@id': 'wdt:P21', 'range': 'Thing'})
+_wikidata_property_child = _WikidataObjectProperty({'@id': 'wdt:P40', 'range': 'NamedIndividual'})
+_wikidata_property_sex = _WikidataObjectProperty({'@id': 'wdt:P21', 'range': 'NamedIndividual'})
 _wikidata_item_male = _WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']})
 _wikidata_item_female = _WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']})
 
