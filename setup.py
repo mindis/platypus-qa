@@ -32,6 +32,9 @@ class CustomInstall(install):
         nltk.download('omw')
 
 
+with open('requirements.txt') as pf:
+    install_requires = [s.strip() for s in pf]
+
 setup(
     name='platypus_qa',
     version='0.0.1',
@@ -51,20 +54,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Application'
     ],
-    install_requires=[
-        'requests>=2.0,<3.0',
-        'ppp_datamodel>=0.6.11',
-        'nltk>=3.0,<4.0',
-        'dateparser>=0.5,<0.6',
-        'ppp_cas>=0.8',
-        'langdetect>=1.0,<2.0',
-        'PyLD>=0.7,<0.8',
-        'Flask>=0.12',
-        'flask-swaggerui>=0.0.1',
-        'flask-cors>=3.0,<4.0',
-        'sympy>=1.0,<2.0',
-        'ply>=3.6,<4.0'
-    ],
+    install_requires=install_requires,
     setup_requires=['nltk>=3.0,<4.0'],
     packages=find_packages(),
     package_data={'platypus_qa': ['ppp-cas-config.json']},
