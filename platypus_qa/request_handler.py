@@ -26,12 +26,13 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Union, Iterable
 
 import langdetect
-from flask import current_app, request
+from flask import current_app, request, jsonify
 from werkzeug.exceptions import NotFound
 
+from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
-from platypus_qa.database.formula import Term
+from platypus_qa.database.formula import Term, ValueFormula
 from platypus_qa.database.owl import Entity
 from platypus_qa.database.owl import Literal
 from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPDataModelConverter, PlatypusResource
@@ -258,7 +259,7 @@ class PPPRequestHandler:
             return PlatypusResource(value='', graph=json_ld)
 
 
-class WikidataSparqlHandler:
+class _BaseWikidataSparqlHandler:
     _knowledge_base = WikidataKnowledgeBase(compacted_individuals=False)
 
     def build_sparql(self):
@@ -272,12 +273,7 @@ class WikidataSparqlHandler:
                 executor.submit(self._do_with_grammatical_analysis, _core_nlp_parser),
                 executor.submit(self._do_with_grammatical_analysis, _syntaxnet_parser)
             ]
-            sparql = _first_future_with_cond(futures, bool, None)
-            if sparql is None:
-                raise NotFound('Not able to build a good SPARQL question for the {} question "{}"'.format(
-                    self._question_language_code, self._question
-                ))
-            return current_app.response_class(sparql, mimetype='application/sparql-query')
+            return self._output_result(_first_future_with_cond(futures, bool, None))
 
     @staticmethod
     def _clean_language_code(language_code: str, text: str):
@@ -299,13 +295,81 @@ class WikidataSparqlHandler:
         )
 
     def _do_with_terms(self, parsed_terms: Iterable[Term]):
-        parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
+        raise NotImplementedError()
 
+    def _output_result(self, result):
+        raise NotImplementedError()
+
+
+class SimpleWikidataSparqlHandler(_BaseWikidataSparqlHandler):
+    def _do_with_terms(self, parsed_terms: Iterable[Term]):
+        parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
         with LazyThreadPoolExecutor(max_workers=16) as executor:
             execution_result = executor.map_first_with_result(
-                lambda term: (term, self._knowledge_base.build_sparql(term)),
+                lambda term: self._knowledge_base.build_sparql(term) if self._knowledge_base.has_results(
+                    term) else None,
                 ((term,) for term in parsed_terms),
-                lambda result: bool(result[1]),
+                bool,
                 None
             )
-            return execution_result[1] if execution_result is not None else None
+            return execution_result
+
+    def _output_result(self, sparql):
+        if sparql is None:
+            raise NotFound('Not able to build a good SPARQL question for the {} question "{}"'.format(
+                self._question_language_code, self._question
+            ))
+        return current_app.response_class(sparql, mimetype='application/sparql-query')
+
+
+class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
+    def _do_with_terms(self, parsed_terms: Iterable[Term]):
+        # TODO: sorting
+        disambiguation_tree = find_process(sorted(parsed_terms, key=lambda term: -term.score))
+        with LazyThreadPoolExecutor(max_workers=16) as executor:
+            return self._serialize_disambiguation_tree(disambiguation_tree, executor)
+
+    def _serialize_disambiguation_tree(self, disambiguation_tree: Union[DisambiguationStep, Iterable[Term]], executor):
+        if isinstance(disambiguation_tree, DisambiguationStep):
+            choices = []
+            for k, v in disambiguation_tree.possibilities.items():
+                child_serialization = self._serialize_disambiguation_tree(v, executor)
+                if child_serialization:
+                    choices.append({
+                        '@type': 'DisambiguatedValue',
+                        'value': self._term_to_json(k),  # TODO
+                        'result': child_serialization
+                    })
+            if not choices:
+                return None  # no valid choice
+            return {
+                '@type': 'DisambiguationStep',
+                'name': disambiguation_tree.str_to_disambiguate,
+                'elements': choices
+            }
+        elif isinstance(disambiguation_tree, Iterable):
+            # TODO: tous les retourner ?
+            execution_result = executor.map_first_with_result(
+                lambda term: self._knowledge_base.build_sparql(term) if self._knowledge_base.has_results(
+                    term) else None,
+                ((term,) for term in sorted(disambiguation_tree, key=lambda term: -term.score)),
+                bool,
+                None
+            )
+            if execution_result is None:
+                return None
+            return {
+                '@type': 'SPARQLFormula',
+                'sparql': execution_result
+            }
+        else:
+            raise ValueError('Unexpected element in a disambiguation tree: {}'.format(type(disambiguation_tree)))
+
+    @staticmethod
+    def _term_to_json(term: Term):
+        if not isinstance(term, ValueFormula):
+            raise ValueError('Only ValueFormula are expected as disambiguation value')
+        return term.term.to_jsonld()
+
+    def _output_result(self, disambiguation_tree):
+        return jsonify(disambiguation_tree)

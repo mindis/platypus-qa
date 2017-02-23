@@ -438,12 +438,13 @@ class GrammaticalAnalyzer:
         return list(set(entities))
 
     def _literals_for_node(self, nodes, expected_type: Type):
-        literals = parse_literal(self._nodes_to_string(nodes), self._language_code, expected_type)
+        input_str = self._nodes_to_string(nodes)
+        literals = parse_literal(input_str, self._language_code, expected_type)
         _logger.info('literals: {} with result {} for type {}'.format(
             self._nodes_to_string(nodes), [str(i) for i in literals], expected_type))
 
         variable = self._create_variable('value')
-        return {Function(variable, EqualityFormula(variable, ValueFormula(literal))) for literal in literals}
+        return {Function(variable, EqualityFormula(variable, ValueFormula(literal, input_str))) for literal in literals}
 
     @staticmethod
     def _find_entities_with_pattern(label, entity_lookup, nounified_patterns, language_code):

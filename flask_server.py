@@ -28,7 +28,8 @@ from ppp_datamodel import Request
 from ppp_datamodel.exceptions import AttributeNotProvided
 from werkzeug.exceptions import BadRequest
 
-from platypus_qa.request_handler import PPPRequestHandler, WikidataSparqlHandler
+from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
+    DisambiguatedWikidataSparqlHandler
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -36,7 +37,8 @@ logging.basicConfig(level=logging.WARNING)
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 CORS(app)
-_wikidata_sparql_handler = WikidataSparqlHandler()
+_simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler()
+_disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler()
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -58,7 +60,12 @@ def root():
 
 @app.route('/v0/wikidata-sparql', methods=['GET'])
 def wikidata_sparql():
-    return _wikidata_sparql_handler.build_sparql()
+    return _simple_wikidata_sparql_handler.build_sparql()
+
+
+@app.route('/v0/wikidata-sparql-disambiguated', methods=['GET'])
+def disambiguated_wikidata_sparql():
+    return _disambiguated_wikidata_sparql_handler.build_sparql()
 
 
 @app.route('/v0')
@@ -110,6 +117,40 @@ def spec():
                         },
                         '404': {
                             'description': 'Platypus is not able to build SPARQL for this query'
+                        }
+                    }
+                }
+            },
+            '/wikidata-sparql-disambiguated': {
+                'get': {
+                    'summary': 'Builds a SPARQL query from a natural language question with enought data to create a dismabiguation UI',
+                    'parameters': [
+                        {
+                            'name': 'q',
+                            'in': 'query',
+                            'description': 'The question.',
+                            'required': True,
+                            'type': 'string',
+                            'x-example': 'Where is Paris?'
+                        },
+                        {
+                            'name': 'lang',
+                            'in': 'query',
+                            'description': 'The language code of the question like "en" or "fr". If "und", the language is guessed.',
+                            'required': False,
+                            'type': 'string',
+                            'default': 'und'
+                        }
+                    ],
+                    'produces': [
+                        'application/json'
+                    ],
+                    'responses': {
+                        '200': {
+                            'description': 'The SPARQL creation succeded.'
+                        },
+                        '400': {
+                            'description': 'The "q" parameter have not been set.'
                         }
                     }
                 }

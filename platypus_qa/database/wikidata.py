@@ -427,16 +427,17 @@ class WikidataKnowledgeBase(KnowledgeBase):
             if not results:
                 return []
             return [Function(var, OrFormula(
-                [EqualityFormula(var, ValueFormula(_WikidataItem(result))) for result in results]))]
+                [EqualityFormula(var, ValueFormula(_WikidataItem(result), label)) for result in results]))]
         else:
-            return [Function(var, EqualityFormula(var, ValueFormula(_WikidataItem(result)))) for result in results]
+            return [Function(var, EqualityFormula(var, ValueFormula(_WikidataItem(result), label))) for result in
+                    results]
 
     @lru_cache(maxsize=8192)
     def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
         if language_code in _hadcoded_relations and label in _hadcoded_relations[language_code]:
             return [_hadcoded_relations[language_code][label]]
         results = self._execute_entity_search(label, language_code, 'Property')
-        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(self._build_property(result)), _o)))
+        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(self._build_property(result), label), _o)))
                 for result in results]
 
     @staticmethod
@@ -468,6 +469,18 @@ class WikidataKnowledgeBase(KnowledgeBase):
 
     def build_sparql(self, term: Term) -> str:
         return self._sparql_builder.build(term, False, False)
+
+    def has_results(self, term: Term) -> bool:
+        # We build an ask query
+        i = 0
+        while isinstance(term, Function):
+            term = term(VariableFormula('expected{}'.format(i)))
+            i += 1
+        result = self._execute_sparql_query(self._sparql_builder.build(term, False, False))
+        if 'boolean' in result:
+            return bool(result['boolean'])
+        else:
+            raise ValueError('Unexpected result from Wikidata Query Service {}'.format(result))
 
     def evaluate_term(self, term: Term) -> List[Union[Entity, Literal]]:
         query = self._sparql_builder.build(term, retrieve_context=True)

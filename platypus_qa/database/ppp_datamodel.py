@@ -76,7 +76,7 @@ class FromPPPDataModelConverter:
             if expected_type <= owl_Thing:
                 return self._knowledge_base.individuals_from_label(node.value, self._language_code)  # TODO: type?
             elif expected_type <= rdfs_Literal:
-                return [Function(variable, EqualityFormula(variable, ValueFormula(value)))
+                return [Function(variable, EqualityFormula(variable, ValueFormula(value, node.value)))
                         for value in parse_literal(node.value, self._language_code, expected_type)]
             else:
                 raise ValueError('Unsupported expected type {}'.format(expected_type))

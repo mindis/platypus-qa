@@ -21,7 +21,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 from copy import copy
 from functools import reduce
 from itertools import chain, product
-from typing import Union, List, Iterable, FrozenSet, Generic, TypeVar, Optional
+from typing import Union, List, Iterable, FrozenSet, Generic, TypeVar, Optional, Callable, Any
 
 from platypus_qa.database.owl import Literal, Property, Class, Datatype, Entity, owl_Thing, rdfs_Literal, owl_Nothing, \
     XSDBooleanLiteral, xsd_boolean, rdf_Property, platypus_calendar, xsd_duration, platypus_numeric
@@ -240,17 +240,24 @@ class Term:
         """
         Substitutes var by term in the expression
         """
-        raise ValueError('Term.substitute is not implemented')
+        raise NotImplementedError('Term.substitute is not implemented')
 
     @property
     def score(self) -> int:
-        raise ValueError('Term.score is not implemented')
+        raise NotImplementedError('Term.score is not implemented')
+
+    @property
+    def original_str(self) -> Optional[str]:
+        return None
 
     def _variables_types(self) -> TypeForVariables:
         """
         Returns a type for each free variable
         """
         return TypeForVariables()
+
+    def explore(self, function: Callable[['Term'], Any]):
+        function(self)
 
     def __str__(self) -> str:
         raise ValueError('Term.__str__ is not implemented')
@@ -336,8 +343,9 @@ class VariableFormula(Formula):
 
 
 class ValueFormula(Formula):
-    def __init__(self, term: Union[Entity, Literal]):
+    def __init__(self, term: Union[Entity, Literal], original_str: Optional[str] = None):
         self.term = term
+        self._original_str = original_str
 
     def substitute(self, var: VariableFormula, formula: Formula) -> 'ValueFormula':
         return self
@@ -348,6 +356,8 @@ class ValueFormula(Formula):
             return reduce(lambda a, b: a | b, (Type.from_entity(type_) for type_ in self.term.types))
         elif isinstance(self.term, Literal):
             return Type.from_entity(self.term.datatype)
+        else:
+            raise ValueError('Unexpected term in ValueFormula: {}'.format(self.term))
 
     @property
     def score(self) -> int:
@@ -355,6 +365,10 @@ class ValueFormula(Formula):
             return self.term.score
         else:
             return 1
+
+    @property
+    def original_str(self) -> Optional[str]:
+        return self._original_str
 
     def __bool__(self) -> bool:
         return self != false_formula  # TODO: what about 0^^xsd:interger?
@@ -404,6 +418,11 @@ class BinaryArithmeticOperatorFormula(Formula):
     @property
     def score(self) -> int:
         return max(self.left.score, self.right.score)
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.left.explore(function)
+        self.right.explore(function)
 
     def __eq__(self, other) -> bool:
         return isinstance(other, type(self)) and self.left == other.left and self.right == other.right
@@ -492,6 +511,11 @@ class AndFormula(Formula):
     def _variables_types(self) -> TypeForVariables:
         return reduce(lambda a, b: a & b, (arg._variables_types() for arg in self.args))
 
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        for arg in self.args:
+            arg.explore(function)
+
     def __str__(self):
         return '({})'.format(' ∧ '.join(str(arg) for arg in self.args))
 
@@ -548,6 +572,11 @@ class OrFormula(Formula):
     def _variables_types(self) -> TypeForVariables:
         return reduce(lambda a, b: a | b, (arg._variables_types() for arg in self.args))
 
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        for arg in self.args:
+            arg.explore(function)
+
     def __str__(self):
         return '({})'.format(' ∨ '.join(str(arg) for arg in self.args))
 
@@ -586,6 +615,10 @@ class NotFormula(Formula):
     @property
     def score(self) -> int:
         return self.arg.score
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.arg.explore(function)
 
     def __str__(self):
         return '¬ {}'.format(str(self.arg))
@@ -629,6 +662,11 @@ class EqualityFormula(Formula):
         if isinstance(self.right, VariableFormula):
             result[self.right] &= self.left.type
         return result  # TODO: do unification if both operands are variables?
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.left.explore(function)
+        self.right.explore(function)
 
     def __str__(self):
         return '[{} = {}]'.format(self.left, self.right)
@@ -685,6 +723,11 @@ class BinaryOrderOperatorFormula(Formula):
     @property
     def score(self) -> int:
         return max(self.left.score, self.right.score)
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.left.explore(function)
+        self.right.explore(function)
 
     def __eq__(self, other) -> bool:
         return isinstance(other, type(self)) and self.left == other.left and self.right == other.right
@@ -765,6 +808,10 @@ class ExistsFormula(Formula):
         del body_types[self.argument]  # shadowing
         return body_types
 
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.body.explore(function)
+
     def __str__(self):
         return '∃ {} {}'.format(self.argument, self.body)
 
@@ -811,6 +858,12 @@ class TripleFormula(Formula):
 
         return result
 
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.subject.explore(function)
+        self.predicate.explore(function)
+        self.object.explore(function)
+
     def __str__(self):
         return '<{}, {}, {}>'.format(self.subject, self.predicate, self.object)
 
@@ -847,6 +900,10 @@ class Function(Term, Generic[T]):
         body_types = copy(self.body._variables_types())
         del body_types[self.argument]  # shadowing
         return body_types
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        self.body.explore(function)
 
     def __call__(self, value: Term) -> T:
         return self.body.substitute(self.argument, value)

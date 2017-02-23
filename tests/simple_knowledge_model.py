@@ -43,12 +43,12 @@ class SimpleKnowledgeBase(KnowledgeBase):
         individuals = self._individuals_by_label[label]
         if type_filter != owl_Thing:
             individuals = [individual for individual in individuals if type in individual.types]
-        return [Function(_s, EqualityFormula(_s, ValueFormula(individual))) for individual in individuals]
+        return [Function(_s, EqualityFormula(_s, ValueFormula(individual, label))) for individual in individuals]
 
     def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
         if label not in self._properties_by_label:
             return []
-        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p), _o))) for p in
+        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p, label), _o))) for p in
                 self._properties_by_label[label]]
 
     def type_relations(self) -> List[Function[Function[Formula]]]:
