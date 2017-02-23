@@ -340,13 +340,18 @@ class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
                         'value': self._term_to_json(k),  # TODO
                         'result': child_serialization
                     })
+            others = self._serialize_disambiguation_tree(disambiguation_tree.others, executor)
             if not choices:
-                return None  # no valid choice
-            return {
-                '@type': 'DisambiguationStep',
-                'name': disambiguation_tree.str_to_disambiguate,
-                'elements': choices
-            }
+                return others
+            elif len(choices) == 1:
+                return choices[0]['result']
+            else:
+                return {
+                    '@type': 'DisambiguationStep',
+                    'name': disambiguation_tree.str_to_disambiguate,
+                    'choices': choices,
+                    'others': others
+                }
         elif isinstance(disambiguation_tree, Iterable):
             # TODO: tous les retourner ?
             execution_result = executor.map_first_with_result(

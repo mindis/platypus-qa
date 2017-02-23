@@ -24,9 +24,11 @@ from platypus_qa.database.formula import Term
 
 
 class DisambiguationStep:
-    def __init__(self, str_to_disambiguate: str, possibilities: Dict[Term, Union['DisambiguationStep', List[Term]]]):
+    def __init__(self, str_to_disambiguate: str, possibilities: Dict[Term, Union['DisambiguationStep', List[Term]]],
+                 others: Union['DisambiguationStep', List[Term]]):
         self.str_to_disambiguate = str_to_disambiguate
         self.possibilities = possibilities
+        self.others = others
 
     def __str__(self):
         return '({}: ({}))'.format(
@@ -82,17 +84,14 @@ def find_process(full_terms: List[Term]) -> Union[DisambiguationStep, List[Term]
             if discriminative_str in trace:
                 new_trace = dict(trace)
                 del new_trace[discriminative_str]
-                full_terms_with_trace_by_discriminative_str_term[trace[discriminative_str]].append((full_term, new_trace))
+                full_terms_with_trace_by_discriminative_str_term[trace[discriminative_str]].append(
+                    (full_term, new_trace))
             else:
-                others_full_terms_with_trace.append([(full_term, trace)])
-
-        # We add the not affected terms everywhere: the meaning choice does not change them
-        for full_term_with_trace in others_full_terms_with_trace:
-            for l in full_terms_with_trace_by_discriminative_str_term.values():
-                l.append(full_term_with_trace)
+                others_full_terms_with_trace.append((full_term, trace))  # TODO: bad
 
         return DisambiguationStep(discriminative_str,
                                   {k: build_tree(v) for k, v in
-                                   full_terms_with_trace_by_discriminative_str_term.items()})
+                                   full_terms_with_trace_by_discriminative_str_term.items()},
+                                  build_tree(others_full_terms_with_trace))
 
     return build_tree(all_full_terms_with_trace)
