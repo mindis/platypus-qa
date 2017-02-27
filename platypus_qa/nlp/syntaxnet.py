@@ -33,7 +33,7 @@ class SyntaxNetParser(NLPParser):
 
     def __init__(self, server_urls):
         """
-        :param server_urls: List[str] URLs of coreNLP servers running version 3.6
+        :param server_urls: List[str] URLs of servers running SyntaNet
         """
         self._servers = server_urls
         self._request_session = requests.session()

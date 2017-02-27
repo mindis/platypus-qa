@@ -170,12 +170,17 @@ class RequestHandlerTest(unittest.TestCase):
     """
 
     def testQuestions(self):
+        request_handler = PPPRequestHandler(
+            'http://163.172.54.30:9000',
+            'http://syntaxnet.askplatyp.us/v1/parsey-universal-full',
+            'http://kb.askplatyp.us/api/v1'
+        )
         bad_count = 0
         for (language_code, questions) in _questions.items():
             for question in questions:
-                results = PPPRequestHandler(Request(
+                results = request_handler.answer(Request(
                     'foo', language_code, Sentence(question), {}, [], language_code
-                )).answer()
+                ))
                 resource_results = [result for result in results
                                     if isinstance(result.tree, Resource) or
                                     (isinstance(result.tree, List) and result.tree.list)]

@@ -35,10 +35,18 @@ logging.basicConfig(level=logging.WARNING)
 
 # Flask setup
 app = Flask(__name__)
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+app.config.from_object('settings')
+app.config.from_envvar('PLATYPUS_QA_CONFIG', silent=True)
 CORS(app)
-_simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler()
-_disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler()
+_simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(
+    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
+)
+_disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(
+    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
+)
+_ppp_request_handler = PPPRequestHandler(
+    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
+)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -55,7 +63,7 @@ def root():
     except AttributeNotProvided as exc:
         raise BadRequest('Attribute not provided: %s.' % exc.args[0])
 
-    return jsonify([x.as_dict() for x in PPPRequestHandler(ppp_request).answer()])
+    return jsonify([x.as_dict() for x in _ppp_request_handler.answer(ppp_request)])
 
 
 @app.route('/v0/wikidata-sparql', methods=['GET'])
@@ -81,7 +89,7 @@ def spec():
             'version': 'dev',
             'title': 'Platypus question answering API',
         },
-        'host': 'qa.dev.askplatyp.us',
+        'host': app.config['HOST'],
         'basePath': '/v0',
         'paths': {
             '/wikidata-sparql': {

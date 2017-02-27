@@ -47,9 +47,6 @@ from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
 from ppp_datamodel.communication import TraceItem, Response
 
 _logger = logging.getLogger('request_handler')
-_core_nlp_parser = CoreNLPParser(['http://163.172.54.30:9000'])
-_syntaxnet_parser = SyntaxNetParser(['http://syntaxnet.askplatyp.us/v1/parsey-universal-full'])
-_knowledge_base = WikidataKnowledgeBase(compacted_individuals=True)
 _default_meas = {'accuracy': 0.5, 'relevance': 0.5}
 
 
@@ -102,9 +99,10 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default):
 
 
 class PPPRequestHandler:
-    def __init__(self, request: Request):
-        self._request = request
-        self._language = self._find_language()
+    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str):
+        self._core_nlp_parser = CoreNLPParser([core_nlp_url])
+        self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
+        self._wikidata_kb = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
         self._to_ppp_datamodel_converter = ToPPPDataModelConverter()
 
     def _find_language(self):
@@ -112,7 +110,10 @@ class PPPRequestHandler:
             return langdetect.detect(self._request.tree.value)  # TODO: more clever + other than Sentence?
         return self._request.language
 
-    def answer(self):
+    def answer(self, request: Request):
+        self._request = request
+        self._language = self._find_language()
+
         all_results = []
         with LazyThreadPoolExecutor(max_workers=4) as executor:
             futures = [
@@ -130,18 +131,18 @@ class PPPRequestHandler:
 
     @_safe_response_builder
     def _do_with_grammatical_corenlp_analysis(self):
-        return self._do_with_grammatical_analysis(_core_nlp_parser, 'CoreNLP')
+        return self._do_with_grammatical_analysis(self._core_nlp_parser, 'CoreNLP')
 
     @_safe_response_builder
     def _do_with_grammatical_syntaxnet_analysis(self):
-        return self._do_with_grammatical_analysis(_syntaxnet_parser, 'SyntaxNet')
+        return self._do_with_grammatical_analysis(self._syntaxnet_parser, 'SyntaxNet')
 
     def _do_with_grammatical_analysis(self, parser: NLPParser, parser_name: str):
         tree = self._request.tree
         if not isinstance(tree, Sentence):
             return []
         return self._do_with_terms(
-            GrammaticalAnalyzer(parser, _knowledge_base, self._language).analyze(tree.value),
+            GrammaticalAnalyzer(parser, self._wikidata_kb, self._language).analyze(tree.value),
             parser_name
         )
 
@@ -151,7 +152,7 @@ class PPPRequestHandler:
         if not isinstance(tree, Sentence) or self._language != 'en':
             return []
         return self._do_with_terms(
-            LegacyGrammaticalAnalyzer(_knowledge_base).analyze(tree.value, self._language),
+            LegacyGrammaticalAnalyzer(self._wikidata_kb).analyze(tree.value, self._language),
             'PPP-NLP-Grammatical'
         )
 
@@ -161,7 +162,7 @@ class PPPRequestHandler:
         if isinstance(tree, Sentence):
             return []
         return self._do_with_terms(
-            FromPPPDataModelConverter(_knowledge_base, 'en').node_to_terms(tree),
+            FromPPPDataModelConverter(self._wikidata_kb, 'en').node_to_terms(tree),
             'Input'
         )
 
@@ -181,7 +182,7 @@ class PPPRequestHandler:
 
         with LazyThreadPoolExecutor(max_workers=16) as executor:
             execution_result = executor.map_first_with_result(
-                lambda term: (term, _knowledge_base.evaluate_term(term)),
+                lambda term: (term, self._wikidata_kb.evaluate_term(term)),
                 ((term,) for term in parsed_terms),
                 lambda result: bool(result[1]),
                 None
@@ -241,7 +242,7 @@ class PPPRequestHandler:
         return False
 
     def _format_value(self, value: Union[Entity, Literal]) -> Resource:
-        return self._json_ld_to_resource(_knowledge_base.format_value(value, self._request.response_language))
+        return self._json_ld_to_resource(self._wikidata_kb.format_value(value, self._request.response_language))
 
     @staticmethod
     def _json_ld_to_resource(json_ld):
@@ -260,7 +261,10 @@ class PPPRequestHandler:
 
 
 class _BaseWikidataSparqlHandler:
-    _knowledge_base = WikidataKnowledgeBase(compacted_individuals=False)
+    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str):
+        self._core_nlp_parser = CoreNLPParser([core_nlp_url])
+        self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
+        self._knowledge_base = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
 
     def build_sparql(self):
         self._question = request.args['q']
@@ -270,8 +274,8 @@ class _BaseWikidataSparqlHandler:
             futures = [
                 executor.submit(self._do_with_legacy_en_grammatical_analysis),
                 # TODO: move down when grammatical will be improved
-                executor.submit(self._do_with_grammatical_analysis, _core_nlp_parser),
-                executor.submit(self._do_with_grammatical_analysis, _syntaxnet_parser)
+                executor.submit(self._do_with_grammatical_analysis, self._core_nlp_parser),
+                executor.submit(self._do_with_grammatical_analysis, self._syntaxnet_parser)
             ]
             return self._output_result(_first_future_with_cond(futures, bool, None))
 

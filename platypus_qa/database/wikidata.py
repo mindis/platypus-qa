@@ -408,8 +408,7 @@ _type_relations = [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p), 
 class WikidataKnowledgeBase(KnowledgeBase):
     _sparql_builder = _WikidataQuerySparqlBuilder()
 
-    def __init__(self, kb_wikidata_uri: str = 'http://kb.askplatyp.us/api/v1',
-                 wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
+    def __init__(self, kb_wikidata_uri: str, wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
                  compacted_individuals=False):
         self._kb_wikidata_uri = kb_wikidata_uri
         self._wikidata_sparql_endpoint_ui = wikidata_sparql_endpoint_uri
