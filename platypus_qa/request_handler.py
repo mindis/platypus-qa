@@ -264,7 +264,7 @@ class _BaseWikidataSparqlHandler:
     def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str):
         self._core_nlp_parser = CoreNLPParser([core_nlp_url])
         self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
-        self._knowledge_base = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
+        self._knowledge_base = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=False)
 
     def build_sparql(self):
         self._question = request.args['q']
