@@ -25,8 +25,12 @@ from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 
 import langdetect
-import os
+from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex
+from calchas_sympy import Translator
 from flask import current_app, request, jsonify
+from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
+from ppp_datamodel.communication import TraceItem, Response
+from sympy import latex
 from typing import Union, Iterable
 from werkzeug.exceptions import NotFound
 
@@ -42,11 +46,6 @@ from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.model import NLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
-
-os.environ['PPP_CAS_CONFIG'] = os.path.dirname(os.path.abspath(__file__)) + '/ppp-cas-config.json'
-from ppp_cas import evaluator, notation
-from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
-from ppp_datamodel.communication import TraceItem, Response
 
 _logger = logging.getLogger('request_handler')
 
@@ -229,22 +228,28 @@ class PPPRequestHandler:
         if not isinstance(tree, Sentence):
             return []
 
-        math_notation = notation.isMath(tree.value)
+        math_notation = is_math(tree.value)
         if math_notation == 0:
             return []
 
-        try:
-            output_string, output_latex = evaluator.evaluate(tree.value)
-        except (ValueError, SyntaxError):
+        calchas_tree = parse_mathematica(tree.value)
+        if calchas_tree is None:
+            calchas_tree = parse_natural(tree.value)
+        if calchas_tree is None:
+            calchas_tree = parse_latex(tree.value)
+        if calchas_tree is None:
             return []
 
-        if not notation.isInteresting(str(tree.value), output_string) and math_notation == 1:
+        sympy_tree = Translator().to_sympy_tree(calchas_tree)
+        output_string = str(sympy_tree)
+
+        if not is_interesting(str(tree.value), output_string) and math_notation == 1:
             return []
 
-        output_tree = MathLatexResource(output_string, latex=output_latex)
+        output_tree = MathLatexResource(output_string, latex=latex(sympy_tree))
         measures = {
             'accuracy': 1,
-            'relevance': notation.relevance(tree.value, output_string)
+            'relevance': relevance(tree.value, output_string)
         }
         trace = self._request.trace + [TraceItem('CAS', output_tree, measures)]
         return [Response(self._request.response_language, output_tree, measures, trace)]

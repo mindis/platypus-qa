@@ -44,12 +44,11 @@ _questions = {
         'Who is the prime minister of France?',
         'What is the birth date of the president of the United States?',
         'Who are the Beatles\' members?',
-        # TODO: too slow 'sqrt(180)',
-        # TODO: too slow 'N[Pi, 42]',
-        # TODO: too slow 'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
-        # TODO: too slow 'Sum[x^n/n!, {n,0,Infinity}]',
-        # TODO: too slow 'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
-        # TODO: too slow 'dsolve(f\'(x) + f(x) = 0, f(x))',
+        'sqrt(180)',
+        'N[Pi, 42]',
+        'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
+        'Sum[x^n/n!, {n,0,Infinity}]',
+        'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
         'Who are the daughters of the wife of the husband of the wife of the president of the United States?',
         'Where was Ulysses S. Grant born?',
         'Where was George Washington born?',
@@ -117,12 +116,11 @@ _questions = {
         'Quel est la capitale de l\'Inde ?',
         'Qui est le premier ministre de la France ?',
         'Qui sont les membres des Beatles ?',
-        # TODO: too slow 'sqrt(180)',
-        # TODO: too slow 'N[Pi, 42]',
-        # TODO: too slow 'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
-        # TODO: too slow 'Sum[x^n/n!, {n,0,Infinity}]',
-        # TODO: too slow 'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
-        #TODO: too slow 'dsolve(f\'(x) + f(x) = 0, f(x))',
+        'sqrt(180)',
+        'N[Pi, 42]',
+        'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
+        'Sum[x^n/n!, {n,0,Infinity}]',
+        'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
         'Quand est né Louis XIV ?',
         'Où est né le général De Gaulle ?',
         'Où est le musée de Louvre ?',
@@ -191,7 +189,7 @@ class RequestHandlerTest(unittest.TestCase):
                         '[ppp_module_test] No resources found for the {} question {}.\nReturned results: {}'.format(
                             language_code, question, results), file=sys.stderr)
                     bad_count += 1
-                time.sleep(5)  # to don't overload servers
+                time.sleep(1)  # to don't overload servers
         if bad_count > 0:
             raise AssertionError(
                 '{} on {} tests failed'.format(bad_count, sum(len(questions) for questions in _questions.values())))
