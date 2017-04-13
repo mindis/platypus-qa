@@ -19,14 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
-import os
 import typing
-from concurrent.futures import Future
-from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Iterable
 
 import langdetect
+import os
+from concurrent.futures import Future
+from concurrent.futures import ThreadPoolExecutor
 from flask import current_app, request, jsonify
+from typing import Union, Iterable
 from werkzeug.exceptions import NotFound
 
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
@@ -47,7 +47,6 @@ from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
 from ppp_datamodel.communication import TraceItem, Response
 
 _logger = logging.getLogger('request_handler')
-_default_meas = {'accuracy': 0.5, 'relevance': 0.5}
 
 
 def _safe_response_builder(func):
@@ -173,9 +172,10 @@ class PPPRequestHandler:
             try:
                 tree = self._to_ppp_datamodel_converter.term_to_node(term)
                 if not isinstance(tree, (Resource, List)):
+                    measures = {'accuracy': 0.5, 'relevance': term.score / 100}  # TODO: is good constant?
                     results.append(Response(
-                        self._language, tree, _default_meas,
-                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, _default_meas)]
+                        self._language, tree, measures,
+                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures)]
                     ))
             except ValueError:
                 continue  # Ignore trees we are not able to serialize
@@ -191,19 +191,20 @@ class PPPRequestHandler:
                 values = List(
                     list=[value for value in executor.map(self._format_value, execution_result[1]) if
                           value is not None])
+                measures = {'accuracy': 0.5, 'relevance': execution_result[0].score / 100}  # TODO: is good constant?
                 try:
                     tree = self._to_ppp_datamodel_converter.term_to_node(execution_result[0])
                     results.append(Response(
-                        self._language, values, _default_meas,
-                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, _default_meas),
+                        self._language, values, measures,
+                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures),
                                                TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values,
-                                                         _default_meas)]
+                                                         measures)]
                     ))
                 except ValueError:
                     results.append(Response(
-                        self._language, values, _default_meas,
+                        self._language, values, measures,
                         self._request.trace + [
-                            TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values, _default_meas)]
+                            TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values, measures)]
                     ))
 
             return results
