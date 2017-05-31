@@ -172,9 +172,9 @@ class RequestHandlerTest(unittest.TestCase):
 
     def testQuestions(self):
         request_handler = PPPRequestHandler(
-            'http://163.172.54.30:9000',
-            'http://syntaxnet.askplatyp.us/v1/parsey-universal-full',
-            'http://kb.askplatyp.us/api/v1',
+            'https://corenlp.askplatyp.us/1.7/',
+            'https://syntaxnet.askplatyp.us/v1/parsey-universal-full',
+            'https://kb.askplatyp.us/api/v1',
             DummyDictLogger()
         )
         bad_count = 0

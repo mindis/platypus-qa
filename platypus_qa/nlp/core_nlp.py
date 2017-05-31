@@ -22,10 +22,10 @@ import json
 import random
 from functools import lru_cache
 from json import JSONDecodeError
-from typing import List
-from typing import Optional
 
 import requests
+from typing import List
+from typing import Optional
 
 from platypus_qa.nlp.model import Sentence, Token, NLPParser
 from platypus_qa.nlp.universal_dependencies import UDPOSTag, UDDependency
@@ -294,8 +294,10 @@ class CoreNLPParser(NLPParser):
 
         server = random.choice(self._servers)
         response = self._request_session.post(server,
-                                              params={'properties': json.dumps(_config_by_language[language_code])},
-                                              data=sentence.encode('utf8'))
+                                              params={
+                                                  'properties': json.dumps(_config_by_language[language_code]),
+                                                  'pipelineLanguage': language_code
+                                              }, data=sentence.encode('utf8'))
         try:
             return response.json()['sentences']
         except JSONDecodeError:

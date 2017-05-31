@@ -216,7 +216,8 @@ _parsed_sentences = {
 class EnglishGrammaticalAnalyzerTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self._analyzer = GrammaticalAnalyzer(CoreNLPParser(['http://163.172.54.30:9000']), _knowledge_base, 'en')
+        self._analyzer = GrammaticalAnalyzer(CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']), _knowledge_base,
+                                             'en')
 
     def testParsing(self):
         bad_count = 0
