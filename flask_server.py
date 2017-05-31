@@ -131,7 +131,7 @@ def spec():
             },
             '/wikidata-sparql-disambiguated': {
                 'get': {
-                    'summary': 'Builds a SPARQL query from a natural language question with enought data to create a dismabiguation UI',
+                    'summary': 'Builds a SPARQL query from a natural language question with enought data to create a disambiguation UI',
                     'parameters': [
                         {
                             'name': 'q',
