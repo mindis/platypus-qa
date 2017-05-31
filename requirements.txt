@@ -1,3 +1,4 @@
+spacy>=1.7<2.0
 requests>=2.0,<3.0
 ppp_datamodel>=0.6.11
 nltk>=3.0,<4.0

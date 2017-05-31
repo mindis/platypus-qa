@@ -38,13 +38,13 @@ from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
 from platypus_qa.database.formula import Term, ValueFormula
-from platypus_qa.database.owl import Entity
-from platypus_qa.database.owl import Literal
+from platypus_qa.database.owl import Entity, Literal
 from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPDataModelConverter, PlatypusResource
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.model import NLPParser
+from platypus_qa.nlp.spacy import SpacyParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 
 _logger = logging.getLogger('request_handler')
@@ -100,6 +100,7 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default):
 
 class PPPRequestHandler:
     def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str, request_logger: DictLogger):
+        self._spacy_parser = SpacyParser()
         self._core_nlp_parser = CoreNLPParser([core_nlp_url])
         self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
         self._wikidata_kb = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
@@ -123,6 +124,7 @@ class PPPRequestHandler:
                 executor.submit(self._do_cas),
                 executor.submit(self._do_with_legacy_en_grammatical_analysis),
                 # TODO: move down when grammatical will be improved
+                executor.submit(self._do_with_grammatical_spacy_analysis),
                 executor.submit(self._do_with_grammatical_corenlp_analysis),
                 executor.submit(self._do_with_grammatical_syntaxnet_analysis)
             ]
@@ -140,6 +142,12 @@ class PPPRequestHandler:
             })
 
         return all_results
+
+    @_safe_response_builder
+    def _do_with_grammatical_spacy_analysis(self):
+        if self._language != 'fr':
+            return []  # TODO: enable Spacy for languages other than fr
+        return self._do_with_grammatical_analysis(self._spacy_parser, 'Spacy')
 
     @_safe_response_builder
     def _do_with_grammatical_corenlp_analysis(self):
