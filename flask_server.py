@@ -28,6 +28,7 @@ from ppp_datamodel import Request
 from ppp_datamodel.exceptions import AttributeNotProvided
 from werkzeug.exceptions import BadRequest
 
+from logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
     DisambiguatedWikidataSparqlHandler
 
@@ -38,6 +39,9 @@ app = Flask(__name__)
 app.config.from_object('settings')
 app.config.from_envvar('PLATYPUS_QA_CONFIG', silent=True)
 CORS(app)
+
+_request_logger = JsonFileDictLogger(app.config['REQUEST_LOGGING_FILE']) \
+    if app.config.get('REQUEST_LOGGING_FILE') else DummyDictLogger()
 _simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(
     app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
 )
@@ -45,7 +49,7 @@ _disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(
     app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
 )
 _ppp_request_handler = PPPRequestHandler(
-    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
+    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], _request_logger
 )
 
 

@@ -19,16 +19,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
+import time
 import typing
+from concurrent.futures import Future
+from concurrent.futures import ThreadPoolExecutor
 
 import langdetect
 import os
-from concurrent.futures import Future
-from concurrent.futures import ThreadPoolExecutor
 from flask import current_app, request, jsonify
 from typing import Union, Iterable
 from werkzeug.exceptions import NotFound
 
+from logs import DictLogger
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
@@ -98,10 +100,11 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default):
 
 
 class PPPRequestHandler:
-    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str):
+    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str, request_logger: DictLogger):
         self._core_nlp_parser = CoreNLPParser([core_nlp_url])
         self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
         self._wikidata_kb = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
+        self._request_logger = request_logger
         self._to_ppp_datamodel_converter = ToPPPDataModelConverter()
 
     def _find_language(self):
@@ -110,6 +113,7 @@ class PPPRequestHandler:
         return self._request.language
 
     def answer(self, request: Request):
+        timestamp = time.time()
         self._request = request
         self._language = self._find_language()
 
@@ -126,6 +130,16 @@ class PPPRequestHandler:
             results = _first_future_with_cond(futures, self._has_resource, [])
             if self._has_resource(results):
                 all_results.extend(results)
+
+        if isinstance(self._request.tree, Sentence):
+            self._request_logger.log({
+                'question': self._request.tree.value,
+                'language': self._language,
+                'with_results': bool(all_results),
+                'timestamp': timestamp,
+                'answer_time': time.time() - timestamp
+            })
+
         return all_results
 
     @_safe_response_builder

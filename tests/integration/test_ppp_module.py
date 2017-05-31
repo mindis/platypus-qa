@@ -24,6 +24,7 @@ import unittest
 
 from ppp_datamodel import Sentence, Resource, List, Request
 
+from logs import DummyDictLogger
 from platypus_qa.request_handler import PPPRequestHandler
 
 _questions = {
@@ -173,7 +174,8 @@ class RequestHandlerTest(unittest.TestCase):
         request_handler = PPPRequestHandler(
             'http://163.172.54.30:9000',
             'http://syntaxnet.askplatyp.us/v1/parsey-universal-full',
-            'http://kb.askplatyp.us/api/v1'
+            'http://kb.askplatyp.us/api/v1',
+            DummyDictLogger()
         )
         bad_count = 0
         for (language_code, questions) in _questions.items():
