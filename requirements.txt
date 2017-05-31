@@ -1,6 +1,7 @@
-spacy>=1.7<2.0
+spacy>=1.7,<2.0
 requests>=2.0,<3.0
 ppp_datamodel>=0.6.11
+ppp_libmodule>=0.7
 nltk>=3.0,<4.0
 dateparser>=0.5,<0.6
 langdetect>=1.0,<2.0
@@ -8,4 +9,4 @@ PyLD>=0.7,<0.8
 Flask>=0.12
 flask-swaggerui>=0.0.1
 flask-cors>=3.0,<4.0
-git+https://github.com/s-i-newton/calchas.git
+calchas

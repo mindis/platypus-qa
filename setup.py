@@ -56,6 +56,9 @@ setup(
     ],
     install_requires=install_requires,
     setup_requires=['nltk>=3.0,<4.0'],
+    dependency_links=[
+        'git+https://github.com/s-i-newton/calchas.git#egg=calchas'
+    ],
     packages=find_packages(),
     cmdclass={'install': CustomInstall},
     test_suite='tests'
