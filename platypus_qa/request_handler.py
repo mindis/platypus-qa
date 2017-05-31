@@ -30,7 +30,6 @@ from flask import current_app, request, jsonify
 from typing import Union, Iterable
 from werkzeug.exceptions import NotFound
 
-from logs import DictLogger
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
@@ -39,6 +38,7 @@ from platypus_qa.database.owl import Entity
 from platypus_qa.database.owl import Literal
 from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPDataModelConverter, PlatypusResource
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
+from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.model import NLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
