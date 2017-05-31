@@ -28,7 +28,7 @@ from ppp_datamodel import Request
 from ppp_datamodel.exceptions import AttributeNotProvided
 from werkzeug.exceptions import BadRequest
 
-from logs import DummyDictLogger, JsonFileDictLogger
+from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
     DisambiguatedWikidataSparqlHandler
 
