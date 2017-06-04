@@ -70,7 +70,7 @@ _sparql_to_tree_without_context = [
                                    EqualityFormula(_y, _Q2)))
     ),
     (
-        'SELECT DISTINCT ?r WHERE {\n\tFILTER(?r = ((2. * ?y) - 1))\n\twd:Q2 wdt:P4 ?y .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
+        'SELECT DISTINCT ?r WHERE {\n\tFILTER(?r = ((2. * ?y) - 1))\n\twd:Q2 wdt:P4 ?y .\n} LIMIT 100',
         Function(_x, ExistsFormula(_y, TripleFormula(_Q2, _P4, _y) & EqualityFormula(_x, _2 * _y - _1)))
     ),
     (
@@ -81,20 +81,32 @@ _sparql_to_tree_without_context = [
     (
         'ASK {\n\t?x wdt:P3 "foo"@fr .\n}',
         ExistsFormula(_x, TripleFormula(_x, _P3, _foo))
+    ),
+    (
+        'SELECT DISTINCT ?r WHERE {\n\tBIND(1 AS ?r)\n} LIMIT 100',
+        Function(_x, EqualityFormula(_x, ValueFormula(XSDIntegerLiteral(1))))
+    ),
+    (
+        'SELECT DISTINCT ?r WHERE {\n\tBIND(1 AS ?r)\n} LIMIT 100',
+        ValueFormula(XSDIntegerLiteral(1))
     )
 ]
 
 _sparql_to_tree_with_context = [
     (
-        'SELECT DISTINCT ?r ?s ?p WHERE {\n\t?s ?p ?r .\n\tBIND(wd:Q2 AS ?s)\n\tBIND(wdt:P3 AS ?p)\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
+        'SELECT DISTINCT ?s ?p ?r WHERE {\n\t?s ?p ?r .\n\tBIND(wd:Q2 AS ?s)\n\tBIND(wdt:P3 AS ?p)\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
         Function(_x, TripleFormula(_Q2, _P3, _x))
     ),
     (
-        'SELECT DISTINCT ?r ?s ?p WHERE {\n\t?s ?p ?r .\n\tBIND(wdt:P3 AS ?p)\n\twd:Q2 wdt:P2 ?s .\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
+        'SELECT DISTINCT ?r WHERE {\n\t?r wdt:P3 wd:Q2 .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
+        Function(_x, TripleFormula(_x, _P3, _Q2))
+    ),
+    (
+        'SELECT DISTINCT ?s ?p ?r WHERE {\n\t?s ?p ?r .\n\tBIND(wdt:P3 AS ?p)\n\twd:Q2 wdt:P2 ?s .\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
         Function(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) & TripleFormula(_Q2, _P2, _y)))
     ),
     (
-        'SELECT DISTINCT ?r ?s ?p WHERE {\n\t{\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P3 AS ?p)\n\t} UNION {\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P4 AS ?p)\n\t}\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
+        'SELECT DISTINCT ?s ?p ?r WHERE {\n\t{\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P3 AS ?p)\n\t} UNION {\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P4 AS ?p)\n\t}\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
         Function(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) | TripleFormula(_y, _P4, _x)))
     ),
     (

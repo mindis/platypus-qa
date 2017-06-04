@@ -23,13 +23,14 @@ import re
 import urllib
 from functools import lru_cache
 from json import JSONDecodeError
-from typing import Dict, List, Union, Optional, Tuple
 
 import requests
+from typing import Dict, List, Union, Optional, Tuple
 
 from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
-    GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula
+    GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
+    BinaryArithmeticOperatorFormula, Type
 from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import NamedIndividual, DataProperty, ObjectProperty, owl_Thing, Class, Property, Literal, \
     XSDBooleanLiteral, XSDAnyURILiteral, RDFLangStringLiteral, Datatype, XSDStringLiteral, XSDDateTimeLiteral, \
@@ -136,30 +137,33 @@ class _WikidataQuerySparqlBuilder:
 
         if isinstance(term, Function):
             arguments = [term.argument]
-            while isinstance(term.body, Function):
-                term = term.body
-                arguments.append(term.argument)
-            clauses = self._build_internal(term.body).replace('\n', '\n\t')
+            inner_term = term
+            while isinstance(inner_term.body, Function):
+                inner_term = inner_term.body
+                arguments.append(inner_term.argument)
+            clauses = self._build_internal(inner_term.body).replace('\n', '\n\t')
 
             suffix = ' LIMIT 100'
-            if do_ranking:
-                if VariableFormula('s') in arguments:
-                    clauses += '\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }'
-                else:
-                    clauses += '\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }'
+            if do_ranking and term.argument_type & Type.from_entity(owl_Thing) != Type.bottom():
+                clauses += '\n\tOPTIONAL { ' + str(term.argument) + ' wikibase:sitelinks ?sitelinksCount . }'
                 suffix = ' ORDER BY DESC(?sitelinksCount) LIMIT 100'
 
             return 'SELECT DISTINCT {} WHERE {{\n\t{}\n}}{}'.format(
                 ' '.join(str(argument) for argument in arguments), clauses, suffix)
-        elif isinstance(term, Formula):
-            return 'ASK {{\n\t{}\n}}'.format(self._build_internal(term))
-        else:
-            raise ValueError('Root term not supported by SPARQL builder {}'.format(term))
+
+        if isinstance(term, Formula):
+            if term.type <= Type.from_entity(xsd_boolean):
+                return 'ASK {{\n\t{}\n}}'.format(self._build_internal(term))
+
+        raise ValueError('Root term not supported by SPARQL builder {}'.format(term))
 
     def _prepare_term(self, term: Term, retrieve_context=False) -> Term:
+        result = VariableFormula('r')
         if isinstance(term, Function):
-            result = VariableFormula('r')
             term = Function(result, term(result))
+        elif isinstance(term, Formula):
+            if not (term.type <= Type.from_entity(xsd_boolean)):
+                term = Function(result, EqualityFormula(result, term))
         if retrieve_context:
             term = self._add_context_variable(term)
         return term
@@ -175,9 +179,9 @@ class _WikidataQuerySparqlBuilder:
         def explore(term: Term) -> Tuple[Term, bool]:
             if isinstance(term, TripleFormula):
                 if term.object == result:
-                    return TripleFormula(subject_var, predicate_var, result) & EqualityFormula(subject_var,
-                                                                                               term.subject) & EqualityFormula(
-                        predicate_var, term.predicate), True
+                    return TripleFormula(subject_var, predicate_var, result) & \
+                           EqualityFormula(subject_var, term.subject) & EqualityFormula(predicate_var, term.predicate), \
+                           True
                 return term, False
             elif isinstance(term, AndFormula):
                 found = False
@@ -207,7 +211,7 @@ class _WikidataQuerySparqlBuilder:
         body, found = explore(term.body)
 
         if found:
-            return Function(result, Function(subject_var, Function(predicate_var, body)))
+            return Function(subject_var, Function(predicate_var, Function(result, body)))
         else:
             return term
 
@@ -225,7 +229,7 @@ class _WikidataQuerySparqlBuilder:
                 return 'BIND({} AS {})'.format(self._serialize_expression(term.left), str(term.right))
             else:
                 return 'FILTER{}'.format(self._serialize_expression(term))
-        elif isinstance(term, BinaryOrderOperatorFormula):
+        elif isinstance(term, (BinaryOrderOperatorFormula, BinaryArithmeticOperatorFormula)):
             return 'FILTER{}'.format(self._serialize_expression(term))
         elif isinstance(term, TripleFormula):
             return '{} {} {} .'.format(
@@ -240,9 +244,8 @@ class _WikidataQuerySparqlBuilder:
             while isinstance(term.body, Function):
                 term = term.body
                 arguments.append(term.argument)
-            return '{SELECT DISTINCT {} WHERE {{\n\t{}\n}}}'.format(' '.join(arguments),
-                                                                    self._build_internal(term.body).replace('\n',
-                                                                                                            '\n\t'))
+            return '{SELECT DISTINCT {} WHERE {{\n\t{}\n}}}'.format(
+                ' '.join(arguments), self._build_internal(term.body).replace('\n', '\n\t'))
         else:
             raise ValueError('Term not supported by SPARQL builder {}'.format(term))
 
