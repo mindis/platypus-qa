@@ -25,7 +25,7 @@ from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 
 import langdetect
-from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex
+from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
 from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
@@ -237,7 +237,7 @@ class PPPRequestHandler:
             return []
 
         math_notation = is_math(tree.value)
-        if math_notation == 0:
+        if math_notation == IsMath.No:
             return []
 
         calchas_tree = parse_mathematica(tree.value)
@@ -251,7 +251,7 @@ class PPPRequestHandler:
         sympy_tree = Translator().to_sympy_tree(calchas_tree)
         output_string = str(sympy_tree)
 
-        if not is_interesting(str(tree.value), output_string) and math_notation == 1:
+        if not is_interesting(str(tree.value), output_string) and math_notation == IsMath.Maybe:
             return []
 
         output_tree = MathLatexResource(output_string, latex=latex(sympy_tree))
