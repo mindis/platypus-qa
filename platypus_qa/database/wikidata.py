@@ -508,9 +508,10 @@ class WikidataKnowledgeBase(KnowledgeBase):
 
     @lru_cache(maxsize=8192)
     def _execute_sparql_query(self, query: str):
-        response = self._request_session_sparql.get(self._wikidata_sparql_endpoint_ui,
-                                                    params={'query': query.replace('\t', '')},
-                                                    headers={'Accept': 'application/sparql-results+json'})
+        response = self._request_session_sparql.post(
+            self._wikidata_sparql_endpoint_ui,
+            data=query.replace('\t', ''),
+            headers={'Accept': 'application/sparql-results+json', 'Content-Type': 'application/sparql-query'})
         try:
             return response.json()
         except JSONDecodeError:
