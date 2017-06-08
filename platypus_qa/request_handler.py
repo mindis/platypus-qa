@@ -23,6 +23,7 @@ import time
 import typing
 from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
+from typing import Union, Iterable
 
 import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
@@ -31,7 +32,6 @@ from flask import current_app, request, jsonify
 from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
 from ppp_datamodel.communication import TraceItem, Response
 from sympy import latex
-from typing import Union, Iterable
 from werkzeug.exceptions import NotFound
 
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
@@ -145,7 +145,7 @@ class PPPRequestHandler:
 
     @_safe_response_builder
     def _do_with_grammatical_spacy_analysis(self):
-        if self._language != 'fr':
+        if self._language not in ['es', 'fr']:
             return []  # TODO: enable Spacy for languages other than fr
         return self._do_with_grammatical_analysis(self._spacy_parser, 'Spacy')
 
