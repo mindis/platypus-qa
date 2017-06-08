@@ -20,6 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import json
 from decimal import Decimal
+
 from typing import Sequence, Union, Optional
 
 """
@@ -381,6 +382,6 @@ class ObjectProperty(Property):
         super().__init__(iri, (rdf_Property, owl_ObjectProperty), domain, range)
 
 
-class DataProperty(Property):
+class DatatypeProperty(Property):
     def __init__(self, iri: str, domain: Class = owl_Thing, range: Datatype = rdfs_Literal):
         super().__init__(iri, (rdf_Property, owl_DatatypeProperty), domain, range)

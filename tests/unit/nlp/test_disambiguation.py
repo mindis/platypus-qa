@@ -22,15 +22,15 @@ import unittest
 
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.database.formula import VariableFormula, ValueFormula, Function, TripleFormula
-from platypus_qa.database.owl import XSDStringLiteral, owl_NamedIndividual, xsd_string, DataProperty
+from platypus_qa.database.owl import XSDStringLiteral, owl_NamedIndividual, xsd_string, DatatypeProperty
 
 _x = VariableFormula('x')
 _foo = ValueFormula(XSDStringLiteral("foo"), "foo")
 _foo2 = ValueFormula(XSDStringLiteral("foo2"), "foo")
 _bar = ValueFormula(XSDStringLiteral("bar"), "bar")
-_schema_name = ValueFormula(DataProperty('http://schema.org/name', owl_NamedIndividual, xsd_string), "name")
-_schema_name2 = ValueFormula(DataProperty('http://schema.org/name2', owl_NamedIndividual, xsd_string), "name")
-_schema_name3 = ValueFormula(DataProperty('http://schema.org/name3', owl_NamedIndividual, xsd_string), "name")
+_schema_name = ValueFormula(DatatypeProperty('http://schema.org/name', owl_NamedIndividual, xsd_string), "name")
+_schema_name2 = ValueFormula(DatatypeProperty('http://schema.org/name2', owl_NamedIndividual, xsd_string), "name")
+_schema_name3 = ValueFormula(DatatypeProperty('http://schema.org/name3', owl_NamedIndividual, xsd_string), "name")
 
 
 class _TestDisambiguation(unittest.TestCase):

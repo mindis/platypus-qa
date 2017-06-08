@@ -30,11 +30,13 @@ from platypus_qa.analyzer.literal_parser import parse_literal
 from platypus_qa.database.formula import ValueFormula, Function, OrFormula, VariableFormula, EqualityFormula, Term, \
     AndFormula, TripleFormula, Formula, ExistsFormula, Type, true_formula
 from platypus_qa.database.model import KnowledgeBase
-from platypus_qa.database.owl import owl_Thing, Entity, Literal, rdfs_Literal
-from platypus_qa.database.wikidata import _WikidataObjectProperty, _WikidataItem
+from platypus_qa.database.owl import owl_Thing, Entity, Literal, rdfs_Literal, owl_NamedIndividual, ObjectProperty
+from platypus_qa.database.wikidata import _WikidataItem
 
-_wikidata_property_child = _WikidataObjectProperty({'@id': 'wdt:P40', 'range': 'NamedIndividual'})
-_wikidata_property_sex = _WikidataObjectProperty({'@id': 'wdt:P21', 'range': 'NamedIndividual'})
+_wikidata_property_child = ObjectProperty('http://www.wikidata.org/prop/direct/P40', owl_NamedIndividual,
+                                          owl_NamedIndividual)
+_wikidata_property_sex = ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual,
+                                        owl_NamedIndividual)
 _wikidata_item_male = _WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']})
 _wikidata_item_female = _WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']})
 

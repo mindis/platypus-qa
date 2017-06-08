@@ -24,6 +24,7 @@ import urllib
 from functools import lru_cache
 from json import JSONDecodeError
 
+import editdistance
 import requests
 from typing import Dict, List, Union, Optional, Tuple
 
@@ -32,34 +33,29 @@ from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, 
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
     BinaryArithmeticOperatorFormula, Type
 from platypus_qa.database.model import KnowledgeBase
-from platypus_qa.database.owl import NamedIndividual, DataProperty, ObjectProperty, owl_Thing, Class, Property, Literal, \
-    XSDBooleanLiteral, XSDAnyURILiteral, RDFLangStringLiteral, Datatype, XSDStringLiteral, XSDDateTimeLiteral, \
+from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
+    XSDBooleanLiteral, XSDAnyURILiteral, RDFLangStringLiteral, XSDStringLiteral, XSDDateTimeLiteral, \
     XSDDateLiteral, XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
     xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean, \
-    xsd_float, xsd_duration, xsd_integer, xsd_gYearMonth, xsd_gYear, xsd_date
+    xsd_integer, Datatype, Property
 
 _logger = logging.getLogger('wikidata')
 
-_wikidata_datatype_map = {
-    'rdf:langString': rdf_langString,
-    'xsd:anyURI': xsd_anyURI,
-    'xsd:boolean': xsd_boolean,
-    'xsd:date': xsd_date,
-    'xsd:dateTime': xsd_dateTime,
-    'xsd:decimal': xsd_decimal,
-    'xsd:double': xsd_double,
-    'xsd:duration': xsd_duration,
-    'xsd:float': xsd_float,
-    'xsd:gYear': xsd_gYear,
-    'xsd:gYearMonth': xsd_gYearMonth,
-    'xsd:integer': xsd_integer,
-    'xsd:string': xsd_string,
-    'geo:wktLiteral': geo_wktLiteral
+_wikibase_property_types = {
+    'http://wikiba.se/ontology#WikibaseItem': owl_NamedIndividual,
+    'http://wikiba.se/ontology#CommonsMedia': xsd_string,
+    'http://wikiba.se/ontology#String': xsd_string,
+    'http://wikiba.se/ontology#ExternalId': xsd_string,
+    'http://wikiba.se/ontology#GlobeCoordinate': geo_wktLiteral,
+    'http://wikiba.se/ontology#Time': xsd_dateTime,
+    'http://wikiba.se/ontology#Url': xsd_anyURI,
+    'http://wikiba.se/ontology#Quantity': xsd_decimal,
+    'http://wikiba.se/ontology#Monolingualtext': rdf_langString,
+    'http://wikiba.se/ontology#WikibaseProperty': rdf_Property,
+    'http://wikiba.se/ontology#GeoShape': xsd_string,
+    'http://wikiba.se/ontology#Math': xsd_string
 }
-_wikidata_class_map = {
-    'NamedIndividual': owl_NamedIndividual,
-    'Property': rdf_Property
-}
+
 _wikidata_prefix_map = {
     'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
     'xsd': 'http://www.w3.org/2001/XMLSchema#',
@@ -74,7 +70,7 @@ _wikidata_prefix_map = {
     'wd': 'http://www.wikidata.org/entity/',
     'wdt': 'http://www.wikidata.org/prop/direct/'
 }
-_wikidata_datatype_registry = {
+_wikibase_datatype_registry = {
     'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString': rdf_langString,
     'http://www.w3.org/2001/XMLSchema#boolean': xsd_boolean,
     'http://www.w3.org/2001/XMLSchema#dateTime': xsd_dateTime,
@@ -94,41 +90,6 @@ class _WikidataItem(NamedIndividual):
     @property
     def score(self) -> int:
         return self._score
-
-
-def find_range(json_ld: Dict):
-    if 'range' in json_ld:
-        return json_ld['range']
-    else:
-        raise ValueError('No range provided')
-
-
-class _WikidataDataProperty(DataProperty):
-    def __init__(self, json_ld: Dict):
-        super().__init__(
-            iri=json_ld['@id'].replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
-            range=self._parse_range(find_range(json_ld))
-        )
-
-    @staticmethod
-    def _parse_range(range: str) -> Datatype:
-        if range not in _wikidata_datatype_map:
-            raise ValueError('Unexpected range {}'.format(range))
-        return _wikidata_datatype_map[range]
-
-
-class _WikidataObjectProperty(ObjectProperty):
-    def __init__(self, json_ld: Dict):
-        super().__init__(
-            iri=json_ld['@id'].replace('wdt:', 'http://www.wikidata.org/prop/direct/'),
-            range=self._parse_range(find_range(json_ld))
-        )
-
-    @staticmethod
-    def _parse_range(range: str) -> Class:
-        if range not in _wikidata_class_map:
-            raise ValueError('Unexpected range {}'.format(range))
-        return _wikidata_class_map[range]
 
 
 class _WikidataQuerySparqlBuilder:
@@ -378,10 +339,14 @@ _wikidata_to_schema = {
 _s = VariableFormula('s')
 _o = VariableFormula('o')
 
+
+def _relation_for_property(property: Property):
+    return Function(_s, Function(_o, TripleFormula(_s, ValueFormula(property), _o)))
+
 _property_child = ValueFormula(
-    _WikidataObjectProperty({'@id': 'wdt:P40', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}))
+    ObjectProperty('http://www.wikidata.org/prop/direct/P40', owl_NamedIndividual, owl_NamedIndividual))
 _property_sex = ValueFormula(
-    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}))
+    ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual))
 _item_male = ValueFormula(_WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']}))
 _item_female = ValueFormula(_WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']}))
 _hadcoded_relations = {
@@ -398,18 +363,19 @@ _hadcoded_relations = {
     }
 }
 
-_type_relations = [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p), _o))) for p in [
-    _WikidataObjectProperty({'@id': 'wdt:P21', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # sex
-    _WikidataObjectProperty({'@id': 'wdt:P27', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # citizenship
-    _WikidataObjectProperty({'@id': 'wdt:P31', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # instance of
-    _WikidataObjectProperty({'@id': 'wdt:P105', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # taxon rank
-    _WikidataObjectProperty({'@id': 'wdt:P106', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'}),  # occupation
-    _WikidataObjectProperty({'@id': 'wdt:P136', '@type': ['ObjectProperty'], 'range': 'NamedIndividual'})  # genre
+_type_relations = [_relation_for_property(p) for p in [
+    ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual),  # sex
+    ObjectProperty('http://www.wikidata.org/prop/direct/P27', owl_NamedIndividual, owl_NamedIndividual),  # citizenship
+    ObjectProperty('http://www.wikidata.org/prop/direct/P31', owl_NamedIndividual, owl_NamedIndividual),  # instance of
+    ObjectProperty('http://www.wikidata.org/prop/direct/P105', owl_NamedIndividual, owl_NamedIndividual),  # taxon rank
+    ObjectProperty('http://www.wikidata.org/prop/direct/P106', owl_NamedIndividual, owl_NamedIndividual),  # occupation
+    ObjectProperty('http://www.wikidata.org/prop/direct/P136', owl_NamedIndividual, owl_NamedIndividual)  # genre
 ]]
 
 
 class WikidataKnowledgeBase(KnowledgeBase):
     _sparql_builder = _WikidataQuerySparqlBuilder()
+    _relations_for_label = {}
 
     def __init__(self, kb_wikidata_uri: str, wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
                  compacted_individuals=False):
@@ -436,20 +402,60 @@ class WikidataKnowledgeBase(KnowledgeBase):
 
     @lru_cache(maxsize=8192)
     def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
-        if language_code in _hadcoded_relations and label in _hadcoded_relations[language_code]:
-            return [_hadcoded_relations[language_code][label]]
-        results = self._execute_entity_search(label, language_code, 'Property')
-        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(self._build_property(result), label), _o)))
-                for result in results]
+        if language_code not in self._relations_for_label:
+            self._fill_relations_for_label(language_code)
 
-    @staticmethod
-    def _build_property(json_ld: Dict) -> Property:
-        if 'ObjectProperty' in json_ld['@type']:
-            return _WikidataObjectProperty(json_ld)
-        elif 'DatatypeProperty' in json_ld['@type']:
-            return _WikidataDataProperty(json_ld)
-        else:
-            raise ValueError('Unknown type for property {}'.format(json_ld))
+        label = label.strip().lower()
+        if label in self._relations_for_label[language_code]:
+            return self._relations_for_label[language_code][label]
+
+        for relations in self._relations_by_edit_distance(label, language_code):
+            if relations:
+                return relations
+        return []
+
+    def _relations_by_edit_distance(self, input_label: str, language_code: str, max_distance: int = 2):
+        results = [set() for _ in range(max_distance + 1)]
+        for ref_label, properties in self._relations_for_label[language_code].items():
+            dist = editdistance.eval(input_label, ref_label)
+            if dist <= max_distance:
+                results[dist].update(properties)
+        return results
+
+    def _fill_relations_for_label(self, language_code: str):
+        results = self._execute_sparql_query(
+            'SELECT ?directProperty ?propertyType ?label { ' +
+            '?property wikibase:directClaim ?directProperty ; wikibase:propertyType ?propertyType . ' +
+            '{ ?property rdfs:label ?label } UNION { ?property skos:altLabel ?label } ' +
+            'FILTER(LANG(?label) = "' + language_code + '" && ?propertyType != wikibase:WikibaseProperty) }'
+        )
+        mapping = {}
+        relations = {}
+        if 'results' in results and 'bindings' in results['results']:
+            for result in results['results']['bindings']:
+                property_iri = result['directProperty']['value']
+                property_type = result['propertyType']['value']
+                label = result['label']['value'].lower()
+                if property_iri not in relations:
+                    if property_type not in _wikibase_property_types:
+                        _logger.warning('Unknown property type: {}'.format(property_type))
+                        continue
+                    else:
+                        property_type = _wikibase_property_types[property_type]
+                        if isinstance(property_type, Class):
+                            relations[property_iri] = _relation_for_property(
+                                ObjectProperty(property_iri, owl_NamedIndividual, property_type))
+                        elif isinstance(property_type, Datatype):
+                            relations[property_iri] = _relation_for_property(
+                                DatatypeProperty(property_iri, owl_NamedIndividual, property_type))
+                        else:
+                            raise ValueError('Unexpected range: {}'.format(property_type))
+                if label not in mapping:
+                    mapping[label] = []
+                mapping[label].append(relations[property_iri])
+        for label, relation in _hadcoded_relations.get(language_code, {}).items():
+            mapping[label] = [relation]
+        self._relations_for_label[language_code] = mapping
 
     def type_relations(self) -> List[Function[Function[Formula]]]:
         return _type_relations
@@ -541,7 +547,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
                     return WikidataKnowledgeBase._format_wdqs_time(term['value'])
                 else:
                     return build_literal(term['value'],
-                                         _wikidata_datatype_registry[term['datatype']])  # TODO: find datatype
+                                         _wikibase_datatype_registry[term['datatype']])  # TODO: find datatype
             else:
                 return XSDStringLiteral(term['value'])
         elif term['type'] == 'bnode':

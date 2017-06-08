@@ -23,9 +23,9 @@ from decimal import Decimal
 
 from platypus_qa.database.formula import Function, VariableFormula, EqualityFormula, ValueFormula, TripleFormula, \
     ExistsFormula
-from platypus_qa.database.owl import RDFLangStringLiteral, XSDDecimalLiteral, XSDIntegerLiteral
-from platypus_qa.database.wikidata import _WikidataItem, _WikidataQuerySparqlBuilder, _WikidataObjectProperty, \
-    _WikidataDataProperty
+from platypus_qa.database.owl import RDFLangStringLiteral, XSDDecimalLiteral, XSDIntegerLiteral, rdf_langString, \
+    DatatypeProperty, xsd_decimal, ObjectProperty, owl_NamedIndividual
+from platypus_qa.database.wikidata import _WikidataItem, _WikidataQuerySparqlBuilder
 
 _x = VariableFormula('x')
 _y = VariableFormula('y')
@@ -35,9 +35,9 @@ _Q3 = ValueFormula(_WikidataItem({'@id': 'wd:Q3'}))
 _foo = ValueFormula(RDFLangStringLiteral('foo', 'fr'))
 _1 = ValueFormula(XSDIntegerLiteral(1))
 _2 = ValueFormula(XSDDecimalLiteral(Decimal(2)))
-_P2 = ValueFormula(_WikidataObjectProperty({'@id': 'wdt:P2', 'range': 'NamedIndividual'}))
-_P3 = ValueFormula(_WikidataDataProperty({'@id': 'wdt:P3', 'range': 'rdf:langString'}))
-_P4 = ValueFormula(_WikidataDataProperty({'@id': 'wdt:P4', 'range': 'xsd:decimal'}))
+_P2 = ValueFormula(ObjectProperty('http://www.wikidata.org/prop/direct/P2', owl_NamedIndividual, owl_NamedIndividual))
+_P3 = ValueFormula(DatatypeProperty('http://www.wikidata.org/prop/direct/P3', owl_NamedIndividual, rdf_langString))
+_P4 = ValueFormula(DatatypeProperty('http://www.wikidata.org/prop/direct/P4', owl_NamedIndividual, xsd_decimal))
 
 _sparql_to_tree_without_context = [
     (

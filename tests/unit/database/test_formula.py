@@ -33,7 +33,7 @@ _0 = ValueFormula(XSDDecimalLiteral(Decimal(0)))
 _1 = ValueFormula(XSDDecimalLiteral(Decimal(1)))
 _2 = ValueFormula(XSDDecimalLiteral(Decimal(2)))
 _2016 = ValueFormula(XSDDateTimeLiteral(2016, 0, 0, 0, 0, 0))
-_schema_name = ValueFormula(DataProperty('http://schema.org/name', _schema_Person, xsd_string))
+_schema_name = ValueFormula(DatatypeProperty('http://schema.org/name', _schema_Person, xsd_string))
 _JohnDoe = ValueFormula(NamedIndividual('http://example.com/me', (_schema_Person,)))
 
 

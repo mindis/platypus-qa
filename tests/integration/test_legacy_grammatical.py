@@ -25,7 +25,7 @@ from itertools import chain
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
 from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
     ExistsFormula
-from platypus_qa.database.owl import ObjectProperty, DataProperty, xsd_decimal, owl_NamedIndividual, Class, \
+from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, xsd_decimal, owl_NamedIndividual, Class, \
     NamedIndividual
 from tests.simple_knowledge_model import SimpleKnowledgeBase
 
@@ -70,7 +70,7 @@ def _get_property(label: str) -> ValueFormula:
     if label in _object_properties:
         return ValueFormula(ObjectProperty(label, range=_object_properties[label]))
     if label in _data_properties:
-        return ValueFormula(DataProperty(label, range=_data_properties[label]))
+        return ValueFormula(DatatypeProperty(label, range=_data_properties[label]))
 
 
 _knowledge_base = SimpleKnowledgeBase(
