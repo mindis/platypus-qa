@@ -81,15 +81,14 @@ _wordnet_hardcoded = {
 
 _ignored_dependencies = [
     UDDependency.aux,
-    UDDependency.auxpass,
     UDDependency.compound,
     UDDependency.case,
     UDDependency.conj,
     UDDependency.cop,
     UDDependency.det,
     UDDependency.discourse,
-    UDDependency.name,
-    UDDependency.mwe,
+    UDDependency.flat,
+    UDDependency.fixed,
     UDDependency.parataxis,
     UDDependency.punct,
     UDDependency.reparandum,
@@ -97,7 +96,6 @@ _ignored_dependencies = [
 
 _dependencies_trimmed_for_label = [
     UDDependency.aux,
-    UDDependency.auxpass,
     UDDependency.case,
     UDDependency.cop,
     UDDependency.det,
@@ -107,7 +105,7 @@ _dependencies_trimmed_for_label = [
     UDDependency.reparandum,
 ]
 
-_pos_trimmed_for_label = [UDPOSTag.ADP, UDPOSTag.AUX, UDPOSTag.CONJ, UDPOSTag.DET, UDPOSTag.INTJ, UDPOSTag.PUNCT,
+_pos_trimmed_for_label = [UDPOSTag.ADP, UDPOSTag.AUX, UDPOSTag.CCONJ, UDPOSTag.DET, UDPOSTag.INTJ, UDPOSTag.PUNCT,
                           UDPOSTag.SCONJ]
 
 _meaningless_roots = {
@@ -294,7 +292,7 @@ class GrammaticalAnalyzer:
                 to_intersect_elements.append([function(output_variable) for function in
                                               self._set_argument_to_relations(main_relations, child)])
 
-            elif child.main_ud_dependency <= UDDependency.dobj:
+            elif child.main_ud_dependency <= UDDependency.obj:
                 main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=nounifier_patterns)
                 to_intersect_elements.append([function(output_variable) for function in
                                               self._set_argument_to_relations(
@@ -470,7 +468,7 @@ class GrammaticalAnalyzer:
         """
         Filters dependencies that are not main component of the dependency tree (determiners, auxiliaries...)
         """
-        return [node for node in nodes if node.main_ud_dependency not in _ignored_dependencies]
+        return [node for node in nodes if node.main_ud_dependency.root_dep not in _ignored_dependencies]
 
     def _extract_label_nodes_from_node(self, main_node: Token, should_start_at_least: Token = None,
                                        should_end_at_least: Token = None) -> List[Token]:
@@ -505,8 +503,9 @@ class GrammaticalAnalyzer:
     def _trim_left(subtree):
         start = 0
         while start < len(subtree):
-            if subtree[start].ud_pos in _pos_trimmed_for_label or \
-                            subtree[start].main_ud_dependency in _dependencies_trimmed_for_label:
+            if subtree[start].ud_pos in _pos_trimmed_for_label or (subtree[start].main_ud_dependency is not None and
+                                                                           subtree[
+                                                                               start].main_ud_dependency.root_dep in _dependencies_trimmed_for_label):
                 start += 1
             else:
                 break
@@ -516,8 +515,9 @@ class GrammaticalAnalyzer:
     def _trim_right(subtree):
         end = len(subtree) - 1
         while end >= 0:
-            if subtree[end].ud_pos in _pos_trimmed_for_label or \
-                            subtree[end].main_ud_dependency in _dependencies_trimmed_for_label:
+            if subtree[end].ud_pos in _pos_trimmed_for_label or (subtree[end].main_ud_dependency is not None and
+                                                                         subtree[
+                                                                             end].main_ud_dependency.root_dep in _dependencies_trimmed_for_label):
                 end -= 1
             else:
                 break
@@ -551,8 +551,8 @@ class GrammaticalAnalyzer:
     @staticmethod
     def _is_same_entity_dependency(dependency_tag: UDDependency) -> bool:
         return dependency_tag <= UDDependency.compound or \
-               dependency_tag <= UDDependency.name or \
-               dependency_tag <= UDDependency.mwe
+               dependency_tag <= UDDependency.flat or \
+               dependency_tag <= UDDependency.fixed
 
     @staticmethod
     def _nodes_to_string(nodes):

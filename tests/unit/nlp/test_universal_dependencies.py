@@ -54,3 +54,7 @@ class _UDDependencyTest(unittest.TestCase):
         self.assertTrue(UDDependency.acl > UDDependency.acl_relcl)
         self.assertFalse(UDDependency.acl_relcl > UDDependency.acl)
         self.assertFalse(UDDependency.advcl > UDDependency.acl_relcl)
+
+    def test_root(self):
+        self.assertEquals(UDDependency.advcl.root_dep, UDDependency.advcl)
+        self.assertTrue(UDDependency.acl_relcl.root_dep, UDDependency.acl)

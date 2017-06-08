@@ -22,10 +22,10 @@ import json
 import random
 from functools import lru_cache
 from json import JSONDecodeError
-
-import requests
 from typing import List
 from typing import Optional
+
+import requests
 
 from platypus_qa.nlp.model import Sentence, Token, NLPParser
 from platypus_qa.nlp.universal_dependencies import UDPOSTag, UDDependency
@@ -118,7 +118,7 @@ _upen_pos_tag_to_ud = {
     '#': UDPOSTag.SYM,
     'UH': UDPOSTag.X,
     'JJ|RB': UDPOSTag.ADJ,
-    'CC': UDPOSTag.CONJ,
+    'CC': UDPOSTag.CCONJ,
     '(': UDPOSTag.SYM,
     'LS': UDPOSTag.X,
     'WP': UDPOSTag.PRON,

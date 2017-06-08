@@ -27,7 +27,7 @@ class UDPOSTag(str, Enum):
     ADP = 'ADP'  # adposition
     ADV = 'ADV'  # adverb
     AUX = 'AUX'  # auxiliary verb
-    CONJ = 'CONJ'  # coordinating conjunction
+    CCONJ = 'CCONJ'  # coordinating conjunction
     DET = 'DET'  # determiner
     INTJ = 'INTJ'  # interjection
     NOUN = 'NOUN'  # noun
@@ -43,7 +43,11 @@ class UDPOSTag(str, Enum):
 
     @staticmethod
     def from_str(string: str):
-        return UDPOSTag[string.upper()]
+        tag = string.upper()
+        if tag == 'CONJ':
+            return UDPOSTag.CCONJ
+        else:
+            return UDPOSTag[string.upper()]
 
     def __str__(self):
         return self.value
@@ -60,47 +64,52 @@ class UDDependency(Enum):
     amod = ('amod',)  # adjectival modifier
     appos = ('appos',)  # appositional modifier
     aux = ('aux',)  # auxiliary
-    auxpass = ('auxpass',)  # passive auxiliary
     case = ('case',)  # case marking
     cc = ('cc',)  # coordinating conjunction
     ccomp = ('ccomp',)  # clausal complement
+    clf = ('clf',)  # classifier
     compound = ('compound',)  # compound
     conj = ('conj',)  # conjunct
     cop = ('cop',)  # copula
     csubj = ('csubj',)  # clausal subject
-    csubjpass = ('csubjpass',)  # clausal passive subject
     dep = ('dep',)  # unspecified dependency
     det = ('det',)  # determiner
     discourse = ('discourse',)  # discourse element
     dislocated = ('dislocated',)  # dislocated elements
-    dobj = ('dobj',)  # direct object
     expl = ('expl',)  # expletive
+    fixed = ('fixed',)  # fixed multiword
+    flat = ('flat',)  # semi-fixed multiword expression
     foreign = ('foreign',)  # foreign words
     goeswith = ('goeswith',)  # goes with
     iobj = ('iobj',)  # indirect object
     list = ('list',)  # list
     mark = ('mark',)  # marker
-    mwe = ('mwe',)  # multi-word expression
     name = ('name',)  # name
-    neg = ('neg',)  # negation modifier
+    neg = ('neg',)  # negation modifier TODO: removed in UD 2
     nmod = ('nmod',)  # nominal modifier
     nsubj = ('nsubj',)  # nominal subject
-    nsubjpass = ('nsubjpass',)  # passive nominal subject
     nummod = ('nummod',)  # numeric modifier
+    obj = ('obj',)  # direct object
+    orphan = ('orphan',)  # ellipsis
     parataxis = ('parataxis',)  # parataxis
     punct = ('punct',)  # punctuation
-    remnant = ('remnant',)  # remnant in ellipsis
+    remnant = ('remnant',)  # remnant in ellipsis TODO: removed in UD 2
     reparandum = ('reparandum',)  # overridden disfluency
     root = ('root',)  # root
     vocative = ('vocative',)  # vocative
     xcomp = ('xcomp',)  # open clausal complement
 
     # extensions
-    acl_relcl = ('acl', 'relcl')  # en, fr,
+    acl_relcl = ('acl', 'relcl')  # en, fr
+    aux_pass = ('aux', 'pass')
     cc_preconj = ('cc', 'preconj')  # en
     compound_prt = ('compound', 'prt')  # en
+    csubj_pass = ('csubj', 'pass')
     det_predet = ('det', 'predet')  # en
+    flat_name = ('flat', 'name')
+    flat_foreign = ('flat', 'foreign')
     nmod_npmod = ('nmod', 'npmod')  # en
+    nsubj_pass = ('nsubj', 'pass')
     nmod_poss = ('nmod', 'poss')  # en, fr
     nmod_tmod = ('nmod', 'tmod')  # en
 
@@ -113,6 +122,31 @@ class UDDependency(Enum):
     def __str__(self):
         return ':'.join(self.value)
 
+    @property
+    def root_dep(self) -> 'UDDependency':
+        if len(self.value) == 1 is None:
+            return self
+        else:
+            return UDDependency[self.value[0]]
+
     @staticmethod
     def from_str(string: str):
-        return UDDependency[string.lower().replace(':', '_')]
+        dep = string.lower().replace(':', '_')
+
+        # Mapping from UD 1 to UD 2
+        if dep == 'dobj':
+            return UDDependency.obj
+        elif dep == 'nsubjpass':
+            return UDDependency.nsubj_pass
+        elif dep == 'csubjpass':
+            return UDDependency.csubj_pass
+        elif dep == 'auxpass':
+            return UDDependency.aux_pass
+        elif dep == 'mwe':
+            return UDDependency.fixed
+        elif dep == 'name':
+            return UDDependency.flat_name
+        elif dep == 'foreign':
+            return UDDependency.flat_foreign
+        else:
+            return UDDependency[dep]
