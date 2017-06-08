@@ -187,7 +187,7 @@ class PPPRequestHandler:
         )
 
     def _do_with_terms(self, parsed_terms: Iterable[Term], parser_name):
-        parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
+        parsed_terms = list(sorted(parsed_terms, key=lambda term: -term.score))
         results = []
         for term in parsed_terms:
             try:
@@ -202,32 +202,35 @@ class PPPRequestHandler:
                 continue  # Ignore trees we are not able to serialize
 
         with LazyThreadPoolExecutor(max_workers=16) as executor:
-            execution_result = executor.map_first_with_result(
-                lambda term: (term, self._wikidata_kb.evaluate_term(term)),
-                ((term,) for term in parsed_terms),
-                lambda result: bool(result[1]),
-                None
-            )
-            if execution_result is not None:
-                values = List(
-                    list=[value for value in executor.map(self._format_value, execution_result[1]) if
-                          value is not None])
-                measures = {'accuracy': 0.5, 'relevance': execution_result[0].score / 100}  # TODO: is good constant?
-                try:
-                    tree = self._to_ppp_datamodel_converter.term_to_node(execution_result[0])
-                    results.append(Response(
-                        self._language, values, measures,
-                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures),
-                                               TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values,
-                                                         measures)]
-                    ))
-                except ValueError:
-                    results.append(Response(
-                        self._language, values, measures,
-                        self._request.trace + [
-                            TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values, measures)]
-                    ))
+            futures = [executor.submit(self._wikidata_kb.evaluate_term, term) for term in parsed_terms]
+            results = []
+            max_score = 0
+            for i in range(len(parsed_terms)):
+                term = parsed_terms[i]
+                if term.score < max_score:
+                    return results
 
+                result = futures[i].result()
+                if result:
+                    max_score = term.score
+                    values = List(
+                        list=[value for value in executor.map(self._format_value, result) if
+                              value is not None])
+                    measures = {'accuracy': 0.5, 'relevance': term.score / 100}  # TODO: is good constant?
+                    try:
+                        tree = self._to_ppp_datamodel_converter.term_to_node(term)
+                        results.append(Response(
+                            self._language, values, measures,
+                            self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures),
+                                                   TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values,
+                                                             measures)]
+                        ))
+                    except ValueError:
+                        results.append(Response(
+                            self._language, values, measures,
+                            self._request.trace + [
+                                TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values, measures)]
+                        ))
             return results
 
     @_safe_response_builder
