@@ -62,6 +62,12 @@ _où = OpenQuestionWord('où', expected_properties=['localisation', 'lieu'], pro
 _quand = OpenQuestionWord('quand', expected_properties=['date', 'heure'],
                           property_modifiers=['date de {}', 'heure de {}', 'année de {}'],
                           expected_type=Type.from_entity(platypus_calendar))
+_dónde = OpenQuestionWord('dónde',
+                          expected_properties=['localización', 'lugar', 'sitio', 'plaza', 'posición', 'ubicación'],
+                          property_modifiers=['lugar de {}'])
+_cuándo = OpenQuestionWord('cuándo', expected_properties=['fecha', 'hora'],
+                           property_modifiers=['fecha de {}', 'hora de {}', 'año de {}'],
+                           expected_type=Type.from_entity(platypus_calendar)),
 _question_words = {
     'de': {
         'wer': OpenQuestionWord('wer'),
@@ -71,8 +77,8 @@ _question_words = {
         'wen': OpenQuestionWord('wen'),
         'wem': OpenQuestionWord('wem'),
         'wieso': OpenQuestionWord('wieso'),  # TODO
-        'woher': OpenQuestionWord('', expected_properties=['Start']),
-        'wohin': OpenQuestionWord('', expected_properties=['']),  # TODO
+        'woher': OpenQuestionWord('woher', expected_properties=['Start']),
+        'wohin': OpenQuestionWord('wohin', expected_properties=['']),  # TODO
         'warum': OpenQuestionWord('warum', expected_properties=['Ursache', 'Anlass', 'Grund', 'Anfang']),
         'welch': OpenQuestionWord('welch')
     },
@@ -121,6 +127,34 @@ _question_words = {
         'from which': OpenQuestionWord('from which',
                                        expected_properties=['place', 'location', 'residence', 'origin', 'citizenship',
                                                             'nationality', 'country of citizenship', 'country', 'city'])
+    },
+    'es': {
+        'cómo': OpenQuestionWord('cómo'),
+        'como': OpenQuestionWord('cómo'),
+        'cuál': OpenQuestionWord('cuál'),
+        'cual': OpenQuestionWord('cuál'),
+        'cuáles': OpenQuestionWord('cuáles'),
+        'cuales': OpenQuestionWord('cuáles'),
+        'cuándo': _cuándo,
+        'cuando': _cuándo,
+        'cuánto': OpenQuestionWord('cuánto'),
+        'cuanto': OpenQuestionWord('cuánto'),
+        'cuánta': OpenQuestionWord('cuánto'),
+        'cuanta': OpenQuestionWord('cuánto'),
+        'cuántos': OpenQuestionWord('cuánto'),
+        'cuantos': OpenQuestionWord('cuánto'),
+        'cuántas': OpenQuestionWord('cuánto'),
+        'cuantas': OpenQuestionWord('cuánto'),
+        'dónde': _dónde,
+        'donde': _dónde,
+        'por qué': OpenQuestionWord('por qué', expected_properties=['causa', 'razón']),
+        'por que': OpenQuestionWord('por qué', expected_properties=['causa', 'razón']),
+        'qué': OpenQuestionWord('qué'),
+        'que': OpenQuestionWord('qué'),
+        'quién': OpenQuestionWord('quién'),  # TODO: expected_types=['Person']
+        'quien': OpenQuestionWord('quién'),  # TODO: expected_types=['Person']
+        'quiénes': OpenQuestionWord('quiénes'),  # TODO: expected_types=['Person']
+        'quienes': OpenQuestionWord('quiénes'),  # TODO: expected_types=['Person']
     },
     'fr': {
         'a quoi': OpenQuestionWord('à quoi'),

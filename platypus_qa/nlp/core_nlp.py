@@ -152,6 +152,159 @@ _upen_pos_tag_to_ud = {
     'RB': UDPOSTag.ADV
 }
 
+_de_pos_tag_to_ud = {  # From Spacy mapping: https://github.com/explosion/spaCy/blob/master/spacy/de/tag_map.py
+    '$(': UDPOSTag.PUNCT,
+    '$,': UDPOSTag.PUNCT,
+    '$.': UDPOSTag.PUNCT,
+    'ADJA': UDPOSTag.ADJ,
+    'ADJD': UDPOSTag.ADJ,
+    'ADV': UDPOSTag.ADV,
+    'APPO': UDPOSTag.ADP,
+    'APPR': UDPOSTag.ADP,
+    'APPRART': UDPOSTag.ADP,
+    'APZR': UDPOSTag.ADP,
+    'ART': UDPOSTag.DET,
+    'CARD': UDPOSTag.NUM,
+    'FM': UDPOSTag.X,
+    'ITJ': UDPOSTag.INTJ,
+    'KOKOM': UDPOSTag.CCONJ,
+    'KON': UDPOSTag.CCONJ,
+    'KOUI': UDPOSTag.SCONJ,
+    'KOUS': UDPOSTag.SCONJ,
+    'NE': UDPOSTag.PROPN,
+    'NNE': UDPOSTag.PROPN,
+    'NN': UDPOSTag.NOUN,
+    'PAV': UDPOSTag.ADV,
+    'PROAV': UDPOSTag.ADV,
+    'PDAT': UDPOSTag.DET,
+    'PDS': UDPOSTag.PRON,
+    'PIAT': UDPOSTag.DET,
+    'PIDAT': UDPOSTag.DET,
+    'PIS': UDPOSTag.PRON,
+    'PPER': UDPOSTag.PRON,
+    'PPOSAT': UDPOSTag.DET,
+    'PPOSS': UDPOSTag.PRON,
+    'PRELAT': UDPOSTag.DET,
+    'PRELS': UDPOSTag.PRON,
+    'PRF': UDPOSTag.PRON,
+    'PTKA': UDPOSTag.PART,
+    'PTKANT': UDPOSTag.PART,
+    'PTKNEG': UDPOSTag.PART,
+    'PTKVZ': UDPOSTag.PART,
+    'PTKZU': UDPOSTag.PART,
+    'PWAT': UDPOSTag.DET,
+    'PWAV': UDPOSTag.ADV,
+    'PWS': UDPOSTag.PRON,
+    'TRUNC': UDPOSTag.X,
+    'VAFIN': UDPOSTag.AUX,
+    'VAIMP': UDPOSTag.AUX,
+    'VAINF': UDPOSTag.AUX,
+    'VAPP': UDPOSTag.AUX,
+    'VMFIN': UDPOSTag.VERB,
+    'VMINF': UDPOSTag.VERB,
+    'VMPP': UDPOSTag.VERB,
+    'VVFIN': UDPOSTag.VERB,
+    'VVIMP': UDPOSTag.VERB,
+    'VVINF': UDPOSTag.VERB,
+    'VVIZU': UDPOSTag.VERB,
+    'VVPP': UDPOSTag.VERB,
+    'XY': UDPOSTag.X
+}
+
+_ancora_pos_tag_to_ud = {  # See https://nlp.stanford.edu/software/spanish-faq.shtml#tagset
+    'ao0000': UDPOSTag.ADJ,
+    'aq0000': UDPOSTag.ADJ,
+    'cc': UDPOSTag.CCONJ,
+    'cs': UDPOSTag.SCONJ,
+    'da0000': UDPOSTag.DET,
+    'dd0000': UDPOSTag.DET,
+    'de0000': UDPOSTag.DET,
+    'di0000': UDPOSTag.DET,
+    'dn0000': UDPOSTag.NUM,
+    'do0000': UDPOSTag.NUM,
+    'dp0000': UDPOSTag.DET,
+    'dt0000': UDPOSTag.DET,
+    'f0': UDPOSTag.PUNCT,
+    'faa': UDPOSTag.PUNCT,
+    'fat': UDPOSTag.PUNCT,
+    'fc': UDPOSTag.PUNCT,
+    'fca': UDPOSTag.PUNCT,
+    'fct': UDPOSTag.PUNCT,
+    'fd': UDPOSTag.PUNCT,
+    'fe': UDPOSTag.PUNCT,
+    'fg': UDPOSTag.PUNCT,
+    'fh': UDPOSTag.PUNCT,
+    'fia': UDPOSTag.PUNCT,
+    'fit': UDPOSTag.PUNCT,
+    'fp': UDPOSTag.PUNCT,
+    'fpa': UDPOSTag.PUNCT,
+    'fpt': UDPOSTag.PUNCT,
+    'fra': UDPOSTag.PUNCT,
+    'frc': UDPOSTag.PUNCT,
+    'fs': UDPOSTag.PUNCT,
+    'ft': UDPOSTag.PUNCT,
+    'fx': UDPOSTag.PUNCT,
+    'fz': UDPOSTag.PUNCT,
+    'i': UDPOSTag.INTJ,
+    'nc00000': UDPOSTag.NOUN,
+    'nc0n000': UDPOSTag.NOUN,
+    'nc0p000': UDPOSTag.NOUN,
+    'nc0s000': UDPOSTag.NOUN,
+    'np00000': UDPOSTag.PROPN,
+    'p0000000': UDPOSTag.PRON,
+    'pd000000': UDPOSTag.PRON,
+    'pe000000': UDPOSTag.PRON,
+    'pi000000': UDPOSTag.PRON,
+    'pn000000': UDPOSTag.PRON,
+    'pp000000': UDPOSTag.PRON,
+    'pr000000': UDPOSTag.PRON,
+    'pt000000': UDPOSTag.PRON,
+    'px000000': UDPOSTag.PRON,
+    'rg': UDPOSTag.ADV,
+    'rn': UDPOSTag.ADV,
+    'sp000': UDPOSTag.ADP,
+    'va00000': UDPOSTag.VERB,
+    'vag0000': UDPOSTag.AUX,
+    'vaic000': UDPOSTag.AUX,
+    'vaif000': UDPOSTag.AUX,
+    'vaii000': UDPOSTag.AUX,
+    'vaip000': UDPOSTag.AUX,
+    'vais000': UDPOSTag.AUX,
+    'vam0000': UDPOSTag.AUX,
+    'van0000': UDPOSTag.AUX,
+    'vap0000': UDPOSTag.AUX,
+    'vasi000': UDPOSTag.AUX,
+    'vasp000': UDPOSTag.AUX,
+    'vmg0000': UDPOSTag.VERB,
+    'vmic000': UDPOSTag.VERB,
+    'vmif000': UDPOSTag.VERB,
+    'vmii000': UDPOSTag.VERB,
+    'vmip000': UDPOSTag.VERB,
+    'vmis000': UDPOSTag.VERB,
+    'vmm0000': UDPOSTag.VERB,
+    'vmn0000': UDPOSTag.VERB,
+    'vmp0000': UDPOSTag.VERB,
+    'vmsi000': UDPOSTag.VERB,
+    'vmsp000': UDPOSTag.VERB,
+    'vsg0000': UDPOSTag.AUX,
+    'vsic000': UDPOSTag.AUX,
+    'vsif000': UDPOSTag.AUX,
+    'vsii000	': UDPOSTag.AUX,
+    'vsip000': UDPOSTag.AUX,
+    'vsis000': UDPOSTag.AUX,
+    'vsm0000': UDPOSTag.AUX,
+    'vsn0000': UDPOSTag.AUX,
+    'vsp0000': UDPOSTag.AUX,
+    'vssf000': UDPOSTag.AUX,
+    'vssi000': UDPOSTag.AUX,
+    'vssp000': UDPOSTag.AUX,
+    'w': UDPOSTag.NOUN,
+    'z0': UDPOSTag.NUM,
+    'zm': UDPOSTag.NOUN,
+    'zu': UDPOSTag.NOUN,
+    'word': UDPOSTag.X
+}
+
 
 class _EnglishCoreNLPToken(_CoreNLPToken):
     def __init__(self, data, sentence):
@@ -160,6 +313,32 @@ class _EnglishCoreNLPToken(_CoreNLPToken):
     @property
     def ud_pos(self) -> UDPOSTag:
         return _upen_pos_tag_to_ud[self._data['pos']]
+
+    @property
+    def main_ud_dependency(self) -> UDDependency:
+        return UDDependency.from_str(self._data['dep'])
+
+
+class _GermanCoreNLPToken(_CoreNLPToken):
+    def __init__(self, data, sentence):
+        super().__init__(data, sentence)
+
+    @property
+    def ud_pos(self) -> UDPOSTag:
+        return _de_pos_tag_to_ud[self._data['pos']]
+
+    @property
+    def main_ud_dependency(self) -> UDDependency:
+        return UDDependency.from_str(self._data['dep'])
+
+
+class _SpanishCoreNLPToken(_CoreNLPToken):
+    def __init__(self, data, sentence):
+        super().__init__(data, sentence)
+
+    @property
+    def ud_pos(self) -> UDPOSTag:
+        return _ancora_pos_tag_to_ud[self._data['pos']]
 
     @property
     def main_ud_dependency(self) -> UDDependency:
@@ -251,9 +430,27 @@ class _EnglishCoreNLPSentence(_CoreNLPSentence):
         return _EnglishCoreNLPToken(core_nlp_data, self)
 
 
+class _GermanCoreNLPSentence(_CoreNLPSentence):
+    def _build_token(self, core_nlp_data) -> Token:
+        return _GermanCoreNLPToken(core_nlp_data, self)
+
+
+class _SpanishCoreNLPSentence(_CoreNLPSentence):
+    def _build_token(self, core_nlp_data) -> Token:
+        return _SpanishCoreNLPToken(core_nlp_data, self)
+
+
 _config_by_language = {
+    'de': {
+        'annotators': 'lemma,depparse',
+        'outputFormat': 'json'
+    },
     'en': {
         'annotators': 'lemma,depparse',  # ,ner,coref
+        'outputFormat': 'json'
+    },
+    'es': {
+        'annotators': 'lemma,depparse',
         'outputFormat': 'json'
     },
     'fr': {
@@ -284,6 +481,10 @@ class CoreNLPParser(NLPParser):
         core_nlp_result = self._do_parse(text, language_code)
         if language_code == 'en':
             return [_EnglishCoreNLPSentence(core_nlp_sentence, 'en') for core_nlp_sentence in core_nlp_result]
+        elif language_code == 'es':
+            return [_SpanishCoreNLPSentence(core_nlp_sentence, 'es') for core_nlp_sentence in core_nlp_result]
+        elif language_code == 'de':
+            return [_GermanCoreNLPSentence(core_nlp_sentence, 'de') for core_nlp_sentence in core_nlp_result]
         else:
             return [_CoreNLPSentence(core_nlp_sentence, language_code) for core_nlp_sentence in core_nlp_result]
 

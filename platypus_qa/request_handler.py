@@ -146,11 +146,13 @@ class PPPRequestHandler:
     @_safe_response_builder
     def _do_with_grammatical_spacy_analysis(self):
         if self._language not in ['es', 'fr']:
-            return []  # TODO: enable Spacy for languages other than fr
+            return []  # TODO: enable Spacy for languages other than fr and es
         return self._do_with_grammatical_analysis(self._spacy_parser, 'Spacy')
 
     @_safe_response_builder
     def _do_with_grammatical_corenlp_analysis(self):
+        if self._language not in ['de', 'en', 'es', 'fr']:
+            return []
         return self._do_with_grammatical_analysis(self._core_nlp_parser, 'CoreNLP')
 
     @_safe_response_builder

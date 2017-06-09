@@ -60,6 +60,17 @@ def _predicate_greater_object_term(relation: Function[Function[Formula]]):
 
 
 _case_words = {
+    'de': {
+        'auf': CaseWord('auf', {('{} auf',): _predicate_object_term}),
+        'aus': CaseWord('aus', {('{} aus',): _predicate_object_term}),
+        'durch': CaseWord('durch', {('{} durch',): _predicate_object_term}),
+        'für': CaseWord('für', {('{} für',): _predicate_object_term}),
+        'fur': CaseWord('für', {('{} für',): _predicate_object_term}),
+        'nach': CaseWord('nach', {('{} nach',): _predicate_object_term}),
+        'mit': CaseWord('mit', {('{} mit',): _predicate_object_term}),
+        'von': CaseWord('von', {('{} von',): _predicate_object_term, ('{}',): _predicate_subject_term}),
+        'zu': CaseWord('zu', {('{} zu',): _predicate_object_term}),
+    },
     'en': {
         'after': CaseWord('after', {('{} after',): _predicate_object_term, ('{} in',): _predicate_greater_object_term}),
         'before': CaseWord('before',
@@ -70,6 +81,10 @@ _case_words = {
         'in': CaseWord('for', {('{} in',): _predicate_object_term}),
         'of': CaseWord('of', {('{} of',): _predicate_object_term, ('{}',): _predicate_subject_term}),
         'on': CaseWord('on', {('{} on',): _predicate_object_term}),
+    },
+    'es': {
+        'de': CaseWord('de', {('{} de',): _predicate_object_term, ('{}',): _predicate_subject_term}),
+        'en': CaseWord('en', {('{} en',): _predicate_object_term}),
     },
     'fr': {
         'à': CaseWord('à', {('{} à',): _predicate_object_term}),

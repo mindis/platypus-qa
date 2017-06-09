@@ -113,7 +113,7 @@ _knowledge_base = SimpleKnowledgeBase(
 _x = VariableFormula('x')
 _y = VariableFormula('y')
 _z = VariableFormula('z')
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 _parsed_sentences = {
     'Bob Marley?':
@@ -215,8 +215,8 @@ _parsed_sentences = {
 class EnglishGrammaticalAnalyzerTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self._analyzer = GrammaticalAnalyzer(CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']), _knowledge_base,
-                                             'en')
+        self._analyzer = GrammaticalAnalyzer(
+            CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']), _knowledge_base, 'en')
 
     def testParsing(self):
         bad_count = 0

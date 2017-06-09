@@ -109,10 +109,12 @@ _pos_trimmed_for_label = [UDPOSTag.ADP, UDPOSTag.AUX, UDPOSTag.CCONJ, UDPOSTag.D
                           UDPOSTag.SCONJ]
 
 _meaningless_roots = {
+    # moi, nous : hack because bad CoreNLP parsing
+    'en': ['list', 'is', 'are', 'was', 'were', 'who', 'what', 'give', 'me', 'us'],
+    'es': ['dame', 'danos', 'daños', 'lista', 'está', 'esta', 'es', 'eres', 'eras', 'son', 'quien', 'qué', 'dar', 'me',
+           'mí'],
     'fr': ['liste', 'donne', 'retourne', 'dit', 'explique', 'moi', 'nous', 'a', 'ont', 'avait', 'avaient', '-ce',
            'qu\'', 'qui', 'quel', 'quels', 'quelle', 'quelles', 'est', 'sont'],
-    # moi, nous : hack because bad CoreNLP parsing
-    'en': ['list', 'is', 'are', 'was', 'were', 'who', 'what', 'give', 'me', 'us']
 }
 
 
