@@ -18,14 +18,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import editdistance
 import logging
 import re
-import requests
 import urllib
 from functools import lru_cache
 from json import JSONDecodeError
 from typing import Dict, List, Union, Optional, Tuple
+
+import editdistance
+import requests
 
 from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
@@ -423,6 +424,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
         return results
 
     def _fill_relations_for_label(self, language_code: str):
+        _logger.info('Loading Wikidata relations for {}'.format(language_code))
         results = self._execute_sparql_query(
             'SELECT ?directProperty ?propertyType ?label { ' +
             '?property wikibase:directClaim ?directProperty ; wikibase:propertyType ?propertyType . ' +
