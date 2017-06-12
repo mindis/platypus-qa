@@ -18,14 +18,13 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+import editdistance
 import logging
 import re
+import requests
 import urllib
 from functools import lru_cache
 from json import JSONDecodeError
-
-import editdistance
-import requests
 from typing import Dict, List, Union, Optional, Tuple
 
 from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
@@ -53,7 +52,8 @@ _wikibase_property_types = {
     'http://wikiba.se/ontology#Monolingualtext': rdf_langString,
     'http://wikiba.se/ontology#WikibaseProperty': rdf_Property,
     'http://wikiba.se/ontology#GeoShape': xsd_string,
-    'http://wikiba.se/ontology#Math': xsd_string
+    'http://wikiba.se/ontology#Math': xsd_string,
+    'http://wikiba.se/ontology#TabularData': xsd_string,
 }
 
 _wikidata_prefix_map = {
