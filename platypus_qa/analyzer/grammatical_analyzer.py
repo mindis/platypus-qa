@@ -22,9 +22,8 @@ import itertools
 import logging
 import re
 from collections import defaultdict
-from typing import List, Optional, Iterable, Set
-
 from nltk.corpus import wordnet
+from typing import List, Optional, Iterable, Set
 
 from platypus_qa.analyzer.case_words import get_case_word_from_str
 from platypus_qa.analyzer.literal_parser import parse_literal
@@ -165,9 +164,9 @@ class GrammaticalAnalyzer:
         (and so resolve ambiguities using the domain knowledge)
         """
         for node in nodes:
-            if node.main_ud_dependency <= UDDependency.nmod:
+            if node.main_ud_dependency <= UDDependency.nmod or node.main_ud_dependency <= UDDependency.obl:
                 for child in reversed(node.right_children):  # TODO: what about left children
-                    if child.main_ud_dependency <= UDDependency.nmod:
+                    if child.main_ud_dependency <= UDDependency.nmod or node.main_ud_dependency <= UDDependency.obl:
                         # we create new possibilities with this child up and we run again the function on it
                         return [nodes] + self._move_up_nmod_dependencies(
                             self._nodes_before(nodes, node, False) +
@@ -306,7 +305,7 @@ class GrammaticalAnalyzer:
                 to_intersect_elements.append([function(output_variable)
                                               for function in self._set_argument_to_relations(main_relations, child)])
 
-            elif child.main_ud_dependency <= UDDependency.nmod:
+            elif child.main_ud_dependency <= UDDependency.nmod or child.main_ud_dependency <= UDDependency.obl:
                 cases = [grandchild.word for grandchild in child.children if
                          grandchild.main_ud_dependency == UDDependency.case]
                 if len(cases) > 1:
