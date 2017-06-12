@@ -63,7 +63,8 @@ _quand = OpenQuestionWord('quand', expected_properties=['date', 'heure'],
                           property_modifiers=['date de {}', 'heure de {}', 'année de {}'],
                           expected_type=Type.from_entity(platypus_calendar))
 _dónde = OpenQuestionWord('dónde',
-                          expected_properties=['localización', 'lugar', 'sitio', 'plaza', 'posición', 'ubicación'],
+                          expected_properties=['localización', 'lugar', 'sitio', 'plaza', 'posición', 'ubicación',
+                                               'coordenadas', 'país'],
                           property_modifiers=['lugar de {}'])
 _cuándo = OpenQuestionWord('cuándo', expected_properties=['fecha', 'hora'],
                            property_modifiers=['fecha de {}', 'hora de {}', 'año de {}'],

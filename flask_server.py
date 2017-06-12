@@ -32,7 +32,7 @@ from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
     DisambiguatedWikidataSparqlHandler
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 # Flask setup
 app = Flask(__name__)

@@ -18,6 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+import logging
 import sys
 import time
 import unittest
@@ -96,6 +97,32 @@ _questions = {
         'When is Ramesses II born?',
         'Where is the inventor of dynamite born?'
     ],
+    'es': [
+        'Barack Obama',
+        'El Bob Marley',
+        '¿Quién es Barack Obama?',
+        'hija de Barack Obama',
+        'El primer ministro de Francia',
+        '¿Quién es el primer ministro de Francia?',
+        '¿Quién es el presidente de Francia?',
+        '¿Cuál es la fecha de nacimiento de Bob Marley?',
+        # TODO '¿Cuál es la velocidad del guepardo?',
+        '¿Cuáles son los hijos de la esposa de Barack Obama?',
+        # TODO '¿Cuál es el ancho de un guepardo?',
+        '¿Cuánto es la altura del Big Ben?',
+        '¿Qué es un tenedor?',
+        '¿Qué es "I, Robot"?',
+        '¿Qué es Robin Hood?',
+        'Daños el primer ministro de Francia.',
+        'libros de Barack Obama',
+        'Lista de libros de Barack Obama',
+        # TODO '¿Cuál es la ubicación de Big Ben?',
+        '¿Dónde está el Big Ben?',
+        # TODO '¿Dónde está Lyon?',
+        '¿Dónde está Paris?',
+        # TODO 'El lugar de nacimiento del presidente de Francia',
+        # TODO '¿Quién nació en 1960?'
+    ],
     'fr': [
         'Quelle est la date de naissance de George Washington?',
         'Quand est né George Washington ?',
@@ -162,6 +189,7 @@ _questions = {
     ]
 }
 
+logging.basicConfig(level=logging.INFO)
 
 class RequestHandlerTest(unittest.TestCase):
     """
