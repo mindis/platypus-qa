@@ -39,7 +39,6 @@ _questions = {
         'Sherlock Holmes',
         'Guatemala',
         'Who is Bach?',
-        'What is “P=NP”?',
         'Who is the author of “Le Petit Prince”?',
         'What is the capital of India?',
         'Who is the prime minister of France?',
@@ -189,7 +188,7 @@ _questions = {
     ]
 }
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 
 class RequestHandlerTest(unittest.TestCase):
@@ -218,7 +217,7 @@ class RequestHandlerTest(unittest.TestCase):
                         '[ppp_module_test] No resources found for the {} question {}.\nReturned results: {}'.format(
                             language_code, question, results), file=sys.stderr)
                     bad_count += 1
-                time.sleep(1)  # to don't overload servers
+                time.sleep(5)  # to don't overload servers
         if bad_count > 0:
             raise AssertionError(
                 '{} on {} tests failed'.format(bad_count, sum(len(questions) for questions in _questions.values())))

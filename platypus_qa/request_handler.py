@@ -49,6 +49,8 @@ from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 
 _logger = logging.getLogger('request_handler')
 
+PROCESSING_TIMEOUT = 10
+
 
 def _safe_response_builder(func):
     def func_wrapper(self, *args):
@@ -88,13 +90,17 @@ class LazyThreadPoolExecutor(ThreadPoolExecutor):
         return False
 
 
-def _first_future_with_cond(futures: typing.List[Future], condition, default):
+def _first_future_with_cond(futures: typing.List[Future], condition, default, timeout=None):
     for future in futures:
-        result = future.result()
-        if condition(result):
-            for future2 in futures:
-                future2.cancel()
-            return result
+        try:
+            result = future.result(timeout)
+            if condition(result):
+                for future2 in futures:
+                    future2.cancel()
+                return result
+        except TimeoutError as e:
+            _logger.warning('Future processing timout', e)
+            future.cancel()
     return default
 
 
@@ -118,17 +124,16 @@ class PPPRequestHandler:
         self._language = self._find_language()
 
         all_results = []
-        with LazyThreadPoolExecutor(max_workers=4) as executor:
+        with LazyThreadPoolExecutor(max_workers=3) as executor:
             futures = [
                 executor.submit(self._do_simple_execute),
                 executor.submit(self._do_cas),
-                executor.submit(self._do_with_legacy_en_grammatical_analysis),
-                # TODO: move down when grammatical will be improved
                 executor.submit(self._do_with_grammatical_spacy_analysis),
                 executor.submit(self._do_with_grammatical_corenlp_analysis),
-                executor.submit(self._do_with_grammatical_syntaxnet_analysis)
+                executor.submit(self._do_with_grammatical_syntaxnet_analysis),
+                executor.submit(self._do_with_legacy_en_grammatical_analysis)  # TODO: remove
             ]
-            results = _first_future_with_cond(futures, self._has_resource, [])
+            results = _first_future_with_cond(futures, self._has_resource, [], PROCESSING_TIMEOUT)
             if self._has_resource(results):
                 all_results.extend(results)
 
@@ -203,7 +208,7 @@ class PPPRequestHandler:
             except ValueError:
                 continue  # Ignore trees we are not able to serialize
 
-        with LazyThreadPoolExecutor(max_workers=16) as executor:
+        with LazyThreadPoolExecutor(max_workers=8) as executor:
             futures = [executor.submit(self._wikidata_kb.evaluate_term, term) for term in parsed_terms]
             results = []
             max_score = 0
@@ -305,12 +310,11 @@ class _BaseWikidataSparqlHandler:
 
         with LazyThreadPoolExecutor(max_workers=2) as executor:
             futures = [
-                executor.submit(self._do_with_legacy_en_grammatical_analysis),
-                # TODO: move down when grammatical will be improved
                 executor.submit(self._do_with_grammatical_analysis, self._core_nlp_parser),
-                executor.submit(self._do_with_grammatical_analysis, self._syntaxnet_parser)
+                executor.submit(self._do_with_grammatical_analysis, self._syntaxnet_parser),
+                executor.submit(self._do_with_legacy_en_grammatical_analysis)
             ]
-            return self._output_result(_first_future_with_cond(futures, bool, None))
+            return self._output_result(_first_future_with_cond(futures, bool, None, PROCESSING_TIMEOUT))
 
     @staticmethod
     def _clean_language_code(language_code: str, text: str):
@@ -341,7 +345,7 @@ class _BaseWikidataSparqlHandler:
 class SimpleWikidataSparqlHandler(_BaseWikidataSparqlHandler):
     def _do_with_terms(self, parsed_terms: Iterable[Term]):
         parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
-        with LazyThreadPoolExecutor(max_workers=16) as executor:
+        with LazyThreadPoolExecutor(max_workers=8) as executor:
             execution_result = executor.map_first_with_result(
                 lambda term: self._knowledge_base.build_sparql(term) if self._knowledge_base.has_results(
                     term) else None,
@@ -363,7 +367,7 @@ class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
     def _do_with_terms(self, parsed_terms: Iterable[Term]):
         # TODO: sorting
         disambiguation_tree = find_process(sorted(parsed_terms, key=lambda term: -term.score))
-        with LazyThreadPoolExecutor(max_workers=16) as executor:
+        with LazyThreadPoolExecutor(max_workers=8) as executor:
             return self._serialize_disambiguation_tree(disambiguation_tree, executor)
 
     def _serialize_disambiguation_tree(self, disambiguation_tree: Union[DisambiguationStep, Iterable[Term]], executor):
