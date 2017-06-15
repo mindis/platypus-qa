@@ -208,6 +208,18 @@ class GrammaticalAnalyzer:
         possibles |= set(self._individuals_for_nodes(list(node.subtree)))
 
         # question words
+        # We try the root if it is the leftest node
+        if not node.left_children:
+            question_word = get_question_word_from_str(node.word, self._language_code)
+            if question_word is not None:  # The root is a question word
+                children_to_parse = self._filter_not_main_dependencies(node.children)
+                if len(children_to_parse) != 1:
+                    return set()  # TODO: what should we do?
+                return set(itertools.chain.from_iterable(
+                    self._add_data_from_question(node, question_word)
+                    for node in self._analyze_tree(children_to_parse[0])))
+
+        # We try other nodes
         question_word = None
         left_children_to_parse = node.left_children
         question_nodes = []
@@ -221,10 +233,6 @@ class GrammaticalAnalyzer:
             if new_question_word is not None:
                 question_word = new_question_word
                 left_children_to_parse = self._nodes_after(left_children_to_parse, child)
-        if not left_children_to_parse:
-            new_question_word = get_question_word_from_str(node.word, self._language_code)
-            if new_question_word is not None:
-                question_word = new_question_word
 
         children_to_parse = self._filter_not_main_dependencies(left_children_to_parse + node.right_children)
         _logger.info('question word {}'.format(question_word))
