@@ -352,6 +352,8 @@ _property_birth_date = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime))
 _property_death_date = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime))
+_property_author = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P50', owl_NamedIndividual, xsd_dateTime))
 _property_birth_place = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P19', owl_NamedIndividual, owl_NamedIndividual))
 _property_death_place = ValueFormula(
@@ -370,9 +372,10 @@ _hadcoded_relations = {
         'identity': Function(_s, Function(_o, EqualityFormula(_s, _o))),
         'definition': Function(_s, Function(_o, EqualityFormula(_s, _o))),
         'born date': Function(_s, Function(_o, TripleFormula(_s, _property_birth_date, _o))),
-        'born place': Function(_s, Function(_o, TripleFormula(_s, _property_birth_place, _o))),
+        'born location': Function(_s, Function(_o, TripleFormula(_s, _property_birth_place, _o))),
         'dead date': Function(_s, Function(_o, TripleFormula(_s, _property_death_date, _o))),
-        'dead place': Function(_s, Function(_o, TripleFormula(_s, _property_death_date, _o)))
+        'dead location': Function(_s, Function(_o, TripleFormula(_s, _property_death_date, _o))),
+        'wrote': Function(_s, Function(_o, TripleFormula(_o, _property_author, _s))),
     }
 }
 
