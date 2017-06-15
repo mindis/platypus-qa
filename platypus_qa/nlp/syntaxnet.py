@@ -49,7 +49,7 @@ class SyntaxNetParser(NLPParser):
     @lru_cache(maxsize=2048)
     def _do_parse(self, text: str, language_code: str) -> str:
         server = random.choice(self._servers)
-        response = self._request_session.post(server, data=text.encode('utf8'),
+        response = self._request_session.post(server, data=text.strip('?.:!').encode('utf8'),
                                               headers={'Content-Language': language_code})
         if response.status_code != 200:
             raise HTTPError('SyntaxNet server error {}:\n{}'.format(response.status_code, response.text))
