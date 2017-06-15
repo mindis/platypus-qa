@@ -99,7 +99,7 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default, ti
                     future2.cancel()
                 return result
         except TimeoutError as e:
-            _logger.warning('Future processing timout', e)
+            _logger.warning('Future processing timout')
             future.cancel()
     return default
 
