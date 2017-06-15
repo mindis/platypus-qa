@@ -22,8 +22,9 @@ import itertools
 import logging
 import re
 from collections import defaultdict
-from nltk.corpus import wordnet
 from typing import List, Optional, Iterable, Set
+
+from nltk.corpus import wordnet
 
 from platypus_qa.analyzer.case_words import get_case_word_from_str
 from platypus_qa.analyzer.literal_parser import parse_literal
@@ -306,8 +307,15 @@ class GrammaticalAnalyzer:
                                               for function in self._set_argument_to_relations(main_relations, child)])
 
             elif child.main_ud_dependency <= UDDependency.nmod or child.main_ud_dependency <= UDDependency.obl:
-                cases = [grandchild.word for grandchild in child.children if
-                         grandchild.main_ud_dependency == UDDependency.case]
+                # We extract cases and remove them from the child
+                cases = [grandchild.word for grandchild in child.children
+                         if grandchild.main_ud_dependency == UDDependency.case]
+                child = SimpleToken(child.word, child.lemma, child.ud_pos, child.main_ud_dependency,
+                                    [grandchild for grandchild in child.left_children
+                                     if grandchild.main_ud_dependency != UDDependency.case],
+                                    [grandchild for grandchild in child.right_children
+                                     if grandchild.main_ud_dependency != UDDependency.case])
+
                 if len(cases) > 1:
                     _logger.info('Multiple cases {} in {}'.format(cases, child))
                     to_intersect_elements.append([])  # TODO: what should we do?

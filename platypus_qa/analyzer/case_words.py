@@ -76,7 +76,7 @@ _case_words = {
         'before': CaseWord('before',
                            {('{} before',): _predicate_object_term, ('{} in',): _predicate_lower_object_term}),
         'by': CaseWord('by', {('{} by',): _predicate_object_term}),
-        'for': CaseWord('for', {('{} for',): _predicate_object_term}),
+        'for': CaseWord('for', {('{} for',): _predicate_object_term, ('{}',): _predicate_subject_term}),
         'from': CaseWord('on', {('{} from',): _predicate_object_term}),
         'in': CaseWord('for', {('{} in',): _predicate_object_term}),
         'of': CaseWord('of', {('{} of',): _predicate_object_term, ('{}',): _predicate_subject_term}),
