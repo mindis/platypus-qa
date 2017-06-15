@@ -25,7 +25,7 @@ import unittest
 
 from ppp_datamodel import Sentence, Resource, List, Request
 
-from logs import DummyDictLogger
+from platypus_qa.logs import DummyDictLogger
 from platypus_qa.request_handler import PPPRequestHandler
 
 _questions = {

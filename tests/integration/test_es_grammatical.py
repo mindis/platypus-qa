@@ -23,12 +23,12 @@ import sys
 import unittest
 from itertools import chain
 
-from nlp.core_nlp import CoreNLPParser
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
     ExistsFormula
 from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, owl_NamedIndividual, Class, NamedIndividual, \
     xsd_dateTime, xsd_decimal, XSDDateTimeLiteral
+from platypus_qa.nlp.core_nlp import CoreNLPParser
 from tests.simple_knowledge_model import SimpleKnowledgeBase
 
 _schema_GeoCoordinates = Class('http://schema.org/GeoCoordinates', (owl_NamedIndividual,))
