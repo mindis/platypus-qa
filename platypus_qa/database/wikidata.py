@@ -529,6 +529,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
             self._wikidata_sparql_endpoint_ui,
             data=query.replace('\t', ''),
             headers={'Accept': 'application/sparql-results+json', 'Content-Type': 'application/sparql-query'})
+        response.raise_for_status()
         try:
             return response.json()
         except JSONDecodeError:
