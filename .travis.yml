@@ -4,5 +4,6 @@ language: python
 python:
   - 3.5
 install:
+  - pip install --upgrade setuptools pip
   - python setup.py install --user
 script: python setup.py test

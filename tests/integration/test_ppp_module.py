@@ -191,6 +191,7 @@ _questions = {
 
 logging.basicConfig(level=logging.INFO)
 
+
 class RequestHandlerTest(unittest.TestCase):
     """
     Warning: very slow tests to don't overload servers
