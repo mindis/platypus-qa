@@ -18,6 +18,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
+import logging
 
 from setuptools import setup, find_packages
 from setuptools.command.install import install
@@ -34,6 +35,8 @@ class CustomInstall(install):
 
 with open('requirements.txt') as pf:
     install_requires = [s.strip() for s in pf]
+
+logging.basicConfig(level=logging.WARNING)
 
 setup(
     name='platypus_qa',
