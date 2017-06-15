@@ -348,6 +348,14 @@ _property_child = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P40', owl_NamedIndividual, owl_NamedIndividual))
 _property_sex = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual))
+_property_birth_date = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime))
+_property_death_date = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime))
+_property_birth_place = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P19', owl_NamedIndividual, owl_NamedIndividual))
+_property_death_place = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual))
 _item_male = ValueFormula(_WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']}))
 _item_female = ValueFormula(_WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']}))
 _hadcoded_relations = {
@@ -360,7 +368,11 @@ _hadcoded_relations = {
                                           TripleFormula(_o, _property_sex, _item_female))),
         'name': Function(_s, Function(_o, EqualityFormula(_s, _o))),
         'identity': Function(_s, Function(_o, EqualityFormula(_s, _o))),
-        'definition': Function(_s, Function(_o, EqualityFormula(_s, _o)))
+        'definition': Function(_s, Function(_o, EqualityFormula(_s, _o))),
+        'born date': Function(_s, Function(_o, TripleFormula(_s, _property_birth_date, _o))),
+        'born place': Function(_s, Function(_o, TripleFormula(_s, _property_birth_place, _o))),
+        'dead date': Function(_s, Function(_o, TripleFormula(_s, _property_death_date, _o))),
+        'dead place': Function(_s, Function(_o, TripleFormula(_s, _property_death_date, _o)))
     }
 }
 
