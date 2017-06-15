@@ -21,7 +21,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 import time
 import typing
-from concurrent.futures import Future
+from concurrent.futures import Future, TimeoutError
 from concurrent.futures import ThreadPoolExecutor
 from typing import Union, Iterable
 
