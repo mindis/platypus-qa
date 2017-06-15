@@ -22,7 +22,7 @@ import itertools
 import logging
 import re
 from collections import defaultdict
-from typing import List, Optional, Iterable, Set
+from typing import List, Iterable, Set
 
 from nltk.corpus import wordnet
 
@@ -131,64 +131,10 @@ class GrammaticalAnalyzer:
         return []
 
     def _analyze(self, sentence: Sentence) -> List[Term]:
-        results = set()
-        for tree in self._sentence_to_trees(sentence):
-            _logger.info('tree {}'.format(tree))
-            results |= self._analyze_tree(tree)
+        results = self._analyze_tree(sentence.root)
         _logger.info(
             'Analysis of sentence "{}" lead to terms: {}'.format(sentence, [str(result) for result in results]))
         return [result for result in results if result]
-
-    def _sentence_to_trees(self, sentence: Sentence):
-        return self._token_with_dependency_to_trees(sentence.root, None)
-
-    def _token_with_dependency_to_trees(self, token: Token, ud_dependency: Optional[UDDependency]) -> List[Token]:
-        """
-        Creates trees from NLP toolkits output. We could create more than 1 tree because when we have sentences like
-        "a of x of y" we want to try both "a (of x (of y))" and "a (of x) (of y)"
-        The most likely trees (e.g. the one returned by NLP tool) are returned first
-        """
-        left_right_children_possibilities = list(itertools.product(
-            self._list_product(
-                self._token_with_dependency_to_trees(child, child.main_ud_dependency) for child in token.left_children),
-            itertools.chain.from_iterable(self._move_up_nmod_dependencies(children) for children in self._list_product(
-                self._token_with_dependency_to_trees(child, child.main_ud_dependency) for child in token.right_children)
-                                          )
-        ))
-        return [SimpleToken(token.word, token.lemma, token.ud_pos, ud_dependency, left_right_children[0],
-                            left_right_children[1])
-                for left_right_children in left_right_children_possibilities]
-
-    def _move_up_nmod_dependencies(self, nodes) -> List[List[Token]]:
-        """
-        Moves up rightmost nmod dependencies in order to have all possible interpretation
-        (and so resolve ambiguities using the domain knowledge)
-        """
-        for node in nodes:
-            if node.main_ud_dependency <= UDDependency.nmod or node.main_ud_dependency <= UDDependency.obl:
-                for child in reversed(node.right_children):  # TODO: what about left children
-                    if child.main_ud_dependency <= UDDependency.nmod or node.main_ud_dependency <= UDDependency.obl:
-                        # we create new possibilities with this child up and we run again the function on it
-                        return [nodes] + self._move_up_nmod_dependencies(
-                            self._nodes_before(nodes, node, False) +
-                            [SimpleToken(node.word, node.lemma, node.ud_pos, node.main_ud_dependency,
-                                         node.left_children,
-                                         self._nodes_before(node.right_children, child, False)), child] +
-                            self._nodes_after(nodes, node, False)
-                        )
-                else:
-                    break  # we do not want to consider element that are between two dependencies
-        return [nodes]
-
-    @staticmethod
-    def _list_product(lists: Iterable[list]) -> List[list]:
-        results = [[]]
-        for list in lists:
-            old_results = results
-            results = []
-            for element in list:
-                results.extend([old_list + [element] for old_list in old_results])
-        return results
 
     def _analyze_tree(self, node: Token, expected_type: Type = Type.from_entity(owl_Thing)) -> Set[Function]:
         _logger.info('main {}'.format(node.word))

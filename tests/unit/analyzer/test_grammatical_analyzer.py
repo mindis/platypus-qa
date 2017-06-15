@@ -43,19 +43,6 @@ class _GrammaticalAnalyzerTest(unittest.TestCase):
         self.assertNotEqual(foo_dep, foo_dep2)
         self.assertNotEqual(foo_dep, foo_adj)
 
-    def test_move_up_nmod_dependencies(self):
-        before = SimpleToken('foo', 'foo', UDPOSTag.ADJ, UDDependency.amod, [], [])
-        after = SimpleToken('bar', 'bar', UDPOSTag.ADJ, UDDependency.amod, [], [])
-        child = SimpleToken('baz', 'baz', UDPOSTag.NOUN, UDDependency.nmod, [], [])
-        before_child = SimpleToken('bat', 'bat', UDPOSTag.ADJ, UDDependency.amod, [], [])
-        node = SimpleToken('foo', 'foo', UDPOSTag.NOUN, UDDependency.nmod, [], [before_child, child])
-
-        results = self._analyzer._move_up_nmod_dependencies([before, node, after])
-        self.assertListEqual([before, node, after], results[0])
-        self.assertListEqual(
-            [before, SimpleToken('foo', 'foo', UDPOSTag.NOUN, UDDependency.nmod, [], [before_child]), child, after],
-            results[1])
-
     def test_nodes_before(self):
         foo = SimpleToken('foo', 'foo', UDPOSTag.ADJ, UDDependency.amod, [], [])
         bar = SimpleToken('bar', 'bar', UDPOSTag.ADJ, UDDependency.amod, [], [])
