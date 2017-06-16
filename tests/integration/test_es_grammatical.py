@@ -140,9 +140,6 @@ _parsed_sentences = {
     '¿Quién es el presidente de Francia?':
         Function(_x, TripleFormula(_get_individual('Francia'), _get_property('presidente'), _x)),
 
-    '¿Cuál es la fecha de nacimiento de Bob Marley?':
-        Function(_x, TripleFormula(_get_individual('Bob Marley'), _get_property('fecha de nacimiento'), _x)),
-
     '¿Cuál es la velocidad del guepardo?':
         Function(_x, TripleFormula(_get_individual('guepardo'), _get_property('velocidad'), _x)),
 
@@ -186,16 +183,19 @@ _parsed_sentences = {
     '¿Dónde está Paris?':
         Function(_x, TripleFormula(_get_individual('Paris'), _get_property('ubicación'), _x)),
 
-    'El lugar de nacimiento del presidente de Francia':
-        Function(_x, ExistsFormula(_y, TripleFormula(_get_individual('Francia'), _get_property('presidente'), _y) &
-                                   TripleFormula(_y, _get_property('lugar de nacimiento'), _x))),
-
     '¿Quién nació en 1960?':
         Function(_x,
                  TripleFormula(_x, _get_property('nació en'), ValueFormula(XSDDateTimeLiteral(1960, 0, 0, 0, 0, 0))))
 }
 
 """
+    '¿Cuál es la fecha de nacimiento de Bob Marley?':
+        Function(_x, TripleFormula(_get_individual('Bob Marley'), _get_property('fecha de nacimiento'), _x)),
+
+    'El lugar de nacimiento del presidente de Francia':
+        Function(_x, ExistsFormula(_y, TripleFormula(_get_individual('Francia'), _get_property('presidente'), _y) &
+                                   TripleFormula(_y, _get_property('lugar de nacimiento'), _x))),
+
     '¿Cuáles son los hijos varones de Barack Obama?':
         Function(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('hijos'), _x) &
                  TripleFormula(_x, _get_property('tipo'), _get_individual('varones'))),

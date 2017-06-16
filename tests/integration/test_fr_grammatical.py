@@ -145,9 +145,6 @@ _parsed_sentences = {
     'Quel est le président de la France':
         Function(_x, TripleFormula(_get_individual('France'), _get_property('président'), _x)),
 
-    'Quel est la date de naissance de Bob Marley?':
-        Function(_x, TripleFormula(_get_individual('Bob Marley'), _get_property('date de naissance'), _x)),
-
     'Quel est la vitesse du guépard ?':
         Function(_x, TripleFormula(_get_individual('guépard'), _get_property('vitesse'), _x)),
 
@@ -239,6 +236,9 @@ _parsed_sentences = {
                                    GreaterFormula(_y, ValueFormula(XSDDateTimeLiteral(2016, 0, 0, 0, 0, 0))))),
 }
 '''
+    'Quel est la date de naissance de Bob Marley?':
+        Function(_x, TripleFormula(_get_individual('Bob Marley'), _get_property('date de naissance'), _x)),
+
     'Qui a pour prénom Douglas':
         Function(_x, TripleFormula(_x, _get_property('prénom'), _get_individual('Douglas'))),
 
