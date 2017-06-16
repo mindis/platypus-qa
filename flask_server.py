@@ -47,19 +47,18 @@ CORS(app)
 
 _request_logger = JsonFileDictLogger(app.config['REQUEST_LOGGING_FILE']) \
     if app.config.get('REQUEST_LOGGING_FILE') else DummyDictLogger()
-_spacy_parser = SpacyParser()
-_core_nlp_parser = CoreNLPParser([app.config['CORE_NLP_URL']])
-_syntaxnet_parser = SyntaxNetParser([app.config['SYNTAXNET_URL']])
+
+_parsers = [
+    SpacyParser(),
+    CoreNLPParser([app.config['CORE_NLP_URL']]),
+    SyntaxNetParser([app.config['SYNTAXNET_URL']])
+]
 _compacted_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=True)
 _wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=False)
-_simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(
-    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _wikidata_kb)
-_disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(
-    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _wikidata_kb)
-_ppp_request_handler = PPPRequestHandler(
-    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _compacted_wikidata_kb, _request_logger)
-_request_handler = RequestHandler(
-    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _compacted_wikidata_kb, _request_logger)
+_simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(_parsers, _wikidata_kb)
+_disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(_parsers, _wikidata_kb)
+_ppp_request_handler = PPPRequestHandler(_parsers, _compacted_wikidata_kb, _request_logger)
+_request_handler = RequestHandler(_parsers, _compacted_wikidata_kb, _request_logger)
 
 
 @app.route('/', methods=['GET', 'POST'])

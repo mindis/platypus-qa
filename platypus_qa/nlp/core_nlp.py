@@ -472,6 +472,10 @@ class CoreNLPParser(NLPParser):
         self._servers = server_urls
         self._request_session = requests.session()
 
+    @property
+    def supported_languages(self) -> List[str]:
+        return ['de', 'en', 'es', 'fr']
+
     def parse(self, text: str, language_code):
         """
         :param text: the text to parse

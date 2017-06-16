@@ -1,8 +1,9 @@
 # coding=utf-8
-import spacy
-from spacy.tokens.span import Span
 from typing import List
 from typing import Optional
+
+import spacy
+from spacy.tokens.span import Span
 
 from platypus_qa.nlp.model import Sentence, Token, NLPParser
 from platypus_qa.nlp.universal_dependencies import UDPOSTag, UDDependency
@@ -84,6 +85,10 @@ class _SpacySentence(Sentence):
 
 class SpacyParser(NLPParser):
     _models_by_language = {}
+
+    @property
+    def supported_languages(self) -> List[str]:
+        return ['es', 'fr']
 
     def parse(self, text: str, language_code: str) -> List[Sentence]:
         # models lazy loading

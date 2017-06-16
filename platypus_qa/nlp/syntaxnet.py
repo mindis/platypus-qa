@@ -20,6 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import random
 from functools import lru_cache
+from typing import List
 
 import requests
 from requests.packages.urllib3.exceptions import HTTPError
@@ -37,6 +38,12 @@ class SyntaxNetParser(NLPParser):
         """
         self._servers = server_urls
         self._request_session = requests.session()
+
+    @property
+    def supported_languages(self) -> List[str]:
+        return ['ar', 'bg', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 'eu', 'fa', 'fi', 'fr', 'ga', 'gl', 'hi',
+                'hr', 'hu', 'id', 'it', 'iw', 'kk', 'la', 'lv', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sl', 'sv', 'ta',
+                'tr', 'zh', 'zh-cn', 'zh-tw']
 
     def parse(self, text: str, language_code: str):
         """

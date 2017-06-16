@@ -189,6 +189,10 @@ class Sentence:
 
 
 class NLPParser:
+    @property
+    def supported_languages(self) -> List[str]:
+        raise NotImplementedError('NLPParser.supported_languages is not implemented')
+
     def parse(self, text: str, language_code: str) -> List[Sentence]:
         """
         :param text: the text to parse
