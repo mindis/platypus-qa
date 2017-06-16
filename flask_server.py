@@ -28,9 +28,13 @@ from ppp_datamodel import Request
 from ppp_datamodel.exceptions import AttributeNotProvided
 from werkzeug.exceptions import BadRequest
 
+from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
+from platypus_qa.nlp.core_nlp import CoreNLPParser
+from platypus_qa.nlp.spacy import SpacyParser
+from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
-    DisambiguatedWikidataSparqlHandler
+    DisambiguatedWikidataSparqlHandler, RequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
 
 logging.basicConfig(level=logging.INFO)
@@ -43,15 +47,19 @@ CORS(app)
 
 _request_logger = JsonFileDictLogger(app.config['REQUEST_LOGGING_FILE']) \
     if app.config.get('REQUEST_LOGGING_FILE') else DummyDictLogger()
+_spacy_parser = SpacyParser()
+_core_nlp_parser = CoreNLPParser([app.config['CORE_NLP_URL']])
+_syntaxnet_parser = SyntaxNetParser([app.config['SYNTAXNET_URL']])
+_compacted_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=True)
+_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=False)
 _simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(
-    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
-)
+    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _wikidata_kb)
 _disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(
-    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL']
-)
+    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _wikidata_kb)
 _ppp_request_handler = PPPRequestHandler(
-    app.config['CORE_NLP_URL'], app.config['SYNTAXNET_URL'], app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], _request_logger
-)
+    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _compacted_wikidata_kb, _request_logger)
+_request_handler = RequestHandler(
+    _spacy_parser, _core_nlp_parser, _syntaxnet_parser, _compacted_wikidata_kb, _request_logger)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -69,6 +77,11 @@ def root():
         raise BadRequest('Attribute not provided: %s.' % exc.args[0])
 
     return jsonify([x.as_dict() for x in _ppp_request_handler.answer(ppp_request)])
+
+
+@app.route('/v0/ask', methods=['GET'])
+def ask():
+    return _request_handler.ask()
 
 
 @app.route('/v0/samples', methods=['GET'])
@@ -103,6 +116,44 @@ def spec():
         'host': app.config['HOST'],
         'basePath': '/v0',
         'paths': {
+            '/ask': {
+                'get': {
+                    'summary': 'Returns possible answers to a natural language question',
+                    'parameters': [
+                        {
+                            'name': 'q',
+                            'in': 'query',
+                            'description': 'The question.',
+                            'required': True,
+                            'type': 'string',
+                            'x-example': 'Who are Wikidata\'s developpers?'
+                        },
+                        {
+                            'name': 'lang',
+                            'in': 'query',
+                            'description': 'The language code of the question like "en" or "fr". If "und", the language is guessed.',
+                            'required': False,
+                            'type': 'string',
+                            'default': 'und'
+                        },
+                        {
+                            'name': 'Accept-Language',
+                            'in': 'header',
+                            'description': 'The language code the results should be formatted in',
+                            'required': False,
+                            'type': 'string'
+                        }
+                    ],
+                    'produces': [
+                        'application/json'
+                    ],
+                    'responses': {
+                        '200': {
+                            'description': 'Structured data providing possible answers to this question. The content is compacted using JSON-LD algorithm.'
+                        }
+                    }
+                }
+            },
             '/samples': {
                 'get': {
                     'summary': 'Returns a list of supported questions',

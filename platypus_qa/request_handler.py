@@ -23,17 +23,12 @@ import time
 import typing
 from concurrent.futures import Future, TimeoutError
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Iterable
+from typing import Union, Iterable, Dict
 
 import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
-from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
-from ppp_datamodel.communication import TraceItem, Response
-from sympy import latex
-from werkzeug.exceptions import NotFound
-
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.analyzer.legacy_grammatical_analyzer import LegacyGrammaticalAnalyzer
@@ -46,10 +41,31 @@ from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.model import NLPParser
 from platypus_qa.nlp.spacy import SpacyParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
+from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
+from ppp_datamodel.communication import TraceItem, Response
+from pyld import jsonld
+from sympy import latex
+from werkzeug.exceptions import NotFound
 
 _logger = logging.getLogger('request_handler')
 
 PROCESSING_TIMEOUT = 10
+_platypus_context = {
+    '@vocab': 'http://schema.org/',
+    'goog': 'http://schema.googleapis.com/',
+    'hydra': 'http://www.w3.org/ns/hydra/core#',
+    'owl': 'http://www.w3.org/2002/07/owl#',
+    'platypus': 'http://askplatyp.us/vocab#',
+    'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+    'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+    'wd': 'http://www.wikidata.org/entity/',
+    'xsd': 'http://www.w3.org/2001/XMLSchema#',
+    'resultScore': 'goog:resultScore',
+    'totalItems': 'hydra:totalItems',
+    'platypus:term': {
+        '@type': 'xsd:string'
+    }
+}
 
 
 def _safe_response_builder(func):
@@ -105,11 +121,12 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default, ti
 
 
 class PPPRequestHandler:
-    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str, request_logger: DictLogger):
-        self._spacy_parser = SpacyParser()
-        self._core_nlp_parser = CoreNLPParser([core_nlp_url])
-        self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
-        self._wikidata_kb = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=True)
+    def __init__(self, spacy_parser: SpacyParser, core_nlp_parser: CoreNLPParser, syntaxnet_parser: SyntaxNetParser,
+                 wikidata_kb_url: WikidataKnowledgeBase, request_logger: DictLogger):
+        self._spacy_parser = spacy_parser
+        self._core_nlp_parser = core_nlp_parser
+        self._syntaxnet_parser = syntaxnet_parser
+        self._wikidata_kb = wikidata_kb_url
         self._request_logger = request_logger
         self._to_ppp_datamodel_converter = ToPPPDataModelConverter()
 
@@ -298,11 +315,147 @@ class PPPRequestHandler:
             return PlatypusResource(value='', graph=json_ld)
 
 
+class RequestHandler:
+    def __init__(self, spacy_parser: SpacyParser, core_nlp_parser: CoreNLPParser, syntaxnet_parser: SyntaxNetParser,
+                 wikidata_kb_url: WikidataKnowledgeBase, request_logger: DictLogger):
+        self._spacy_parser = spacy_parser
+        self._core_nlp_parser = core_nlp_parser
+        self._syntaxnet_parser = syntaxnet_parser
+        self._wikidata_kb = wikidata_kb_url
+        self._request_logger = request_logger
+
+    def ask(self):
+        self._question = request.args['q']
+        self._question_language_code = self._clean_language_code(request.args.get('lang', 'und'), self._question)
+        self._accept_languages = str(request.accept_languages)
+
+        timestamp = time.time()
+
+        results = []
+        with LazyThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(self._do_cas),
+                executor.submit(self._do_with_grammatical_spacy_analysis),
+                executor.submit(self._do_with_grammatical_corenlp_analysis),
+                executor.submit(self._do_with_grammatical_syntaxnet_analysis)
+            ]
+            results.extend(_first_future_with_cond(futures, bool, [], PROCESSING_TIMEOUT))
+
+        self._request_logger.log({
+            'question': self._question,
+            'language': self._question_language_code,
+            'with_results': bool(results),
+            'timestamp': timestamp,
+            'answer_time': time.time() - timestamp
+        })
+
+        return jsonify(jsonld.compact({
+            '@context': _platypus_context,
+            '@type': 'hydra:Collection',
+            'totalItems': len(results),
+            'member': results
+        }, _platypus_context))
+
+    @staticmethod
+    def _clean_language_code(language_code: str, text: str):
+        if language_code == 'und':
+            return langdetect.detect(text)  # TODO: more clever
+        return language_code
+
+    @_safe_response_builder
+    def _do_with_grammatical_spacy_analysis(self):
+        if self._question_language_code not in ['es', 'fr']:
+            return []  # TODO: enable Spacy for languages other than fr and es
+        return self._do_with_grammatical_analysis(self._spacy_parser, 'Spacy')
+
+    @_safe_response_builder
+    def _do_with_grammatical_corenlp_analysis(self):
+        if self._question_language_code not in ['de', 'en', 'es', 'fr']:
+            return []
+        return self._do_with_grammatical_analysis(self._core_nlp_parser, 'CoreNLP')
+
+    @_safe_response_builder
+    def _do_with_grammatical_syntaxnet_analysis(self):
+        return self._do_with_grammatical_analysis(self._syntaxnet_parser, 'SyntaxNet')
+
+    def _do_with_grammatical_analysis(self, parser: NLPParser, parser_name: str):
+        return self._do_with_terms(
+            GrammaticalAnalyzer(parser, self._wikidata_kb, self._question_language_code).analyze(self._question),
+            parser_name
+        )
+
+    def _do_with_terms(self, parsed_terms: Iterable[Term], parser_name):
+        parsed_terms = list(sorted(parsed_terms, key=lambda term: -term.score))
+
+        with LazyThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(self._wikidata_kb.evaluate_term, term) for term in parsed_terms]
+            results = []
+            max_score = 0
+            for i in range(len(parsed_terms)):
+                term = parsed_terms[i]
+                if term.score < max_score:
+                    return results
+
+                query_results = futures[i].result()
+                if query_results:
+                    max_score = term.score
+                    results.extend({
+                                       'result': value,
+                                       'resultScore': term.score / 100,
+                                       'platypus:term': str(term)
+                                   } for value in executor.map(self._format_value, query_results) if value is not None)
+            return results
+
+    @_safe_response_builder
+    def _do_cas(self):
+        math_notation = is_math(self._question)
+        if math_notation == IsMath.No:
+            return []
+
+        calchas_tree = parse_mathematica(self._question)
+        if calchas_tree is None:
+            calchas_tree = parse_natural(self._question)
+        if calchas_tree is None:
+            calchas_tree = parse_latex(self._question)
+        if calchas_tree is None:
+            return []
+
+        sympy_tree = Translator().to_sympy_tree(calchas_tree)
+        output_string = str(sympy_tree)
+
+        if not is_interesting(str(self._question), output_string) and math_notation == IsMath.Maybe:
+            return []
+
+        return [{
+            'result': {
+                '@type': 'platypus:LaTeX',
+                'name': output_string,
+                'rdf:value': {
+                    '@type': 'platypus:LaTeX',
+                    '@value': latex(sympy_tree)
+                }
+            },
+            'resultScore': relevance(self._question, output_string)
+        }]
+
+    @staticmethod
+    def _has_resource(results) -> bool:
+        for result in results:
+            if isinstance(result.tree, (Resource, List)):
+                return True
+        return False
+
+    def _format_value(self, value: Union[Entity, Literal]) -> Dict:
+        return self._wikidata_kb.format_value(value, self._accept_languages)
+
+
 class _BaseWikidataSparqlHandler:
-    def __init__(self, core_nlp_url: str, syntaxnet_url: str, wikidata_kb_url: str):
-        self._core_nlp_parser = CoreNLPParser([core_nlp_url])
-        self._syntaxnet_parser = SyntaxNetParser([syntaxnet_url])
-        self._knowledge_base = WikidataKnowledgeBase(wikidata_kb_url, compacted_individuals=False)
+    def __init__(self, spacy_parser: SpacyParser, core_nlp_parser: CoreNLPParser, syntaxnet_parser: SyntaxNetParser,
+                 wikidata_kb_url: WikidataKnowledgeBase):
+        self._spacy_parser = spacy_parser
+        self._core_nlp_parser = core_nlp_parser
+        self._syntaxnet_parser = syntaxnet_parser
+        self._wikidata_kb = wikidata_kb_url
 
     def build_sparql(self):
         self._question = request.args['q']
@@ -310,8 +463,9 @@ class _BaseWikidataSparqlHandler:
 
         with LazyThreadPoolExecutor(max_workers=2) as executor:
             futures = [
-                executor.submit(self._do_with_grammatical_analysis, self._core_nlp_parser),
-                executor.submit(self._do_with_grammatical_analysis, self._syntaxnet_parser),
+                executor.submit(self._do_with_grammatical_spacy_analysis),
+                executor.submit(self._do_with_grammatical_corenlp_analysis),
+                executor.submit(self._do_with_grammatical_syntaxnet_analysis),
                 executor.submit(self._do_with_legacy_en_grammatical_analysis)
             ]
             return self._output_result(_first_future_with_cond(futures, bool, None, PROCESSING_TIMEOUT))
@@ -322,9 +476,25 @@ class _BaseWikidataSparqlHandler:
             return langdetect.detect(text)  # TODO: more clever
         return language_code
 
+    @_safe_response_builder
+    def _do_with_grammatical_spacy_analysis(self):
+        if self._question_language_code not in ['es', 'fr']:
+            return []  # TODO: enable Spacy for languages other than fr and es
+        return self._do_with_grammatical_analysis(self._spacy_parser, )
+
+    @_safe_response_builder
+    def _do_with_grammatical_corenlp_analysis(self):
+        if self._question_language_code not in ['de', 'en', 'es', 'fr']:
+            return []
+        return self._do_with_grammatical_analysis(self._core_nlp_parser)
+
+    @_safe_response_builder
+    def _do_with_grammatical_syntaxnet_analysis(self):
+        return self._do_with_grammatical_analysis(self._syntaxnet_parser)
+
     def _do_with_grammatical_analysis(self, parser: NLPParser):
         return self._do_with_terms(
-            GrammaticalAnalyzer(parser, self._knowledge_base, self._question_language_code).analyze(self._question)
+            GrammaticalAnalyzer(parser, self._wikidata_kb, self._question_language_code).analyze(self._question)
         )
 
     @_safe_response_builder
@@ -332,7 +502,7 @@ class _BaseWikidataSparqlHandler:
         if self._question_language_code != 'en':
             return None
         return self._do_with_terms(
-            LegacyGrammaticalAnalyzer(self._knowledge_base).analyze(self._question, self._question_language_code)
+            LegacyGrammaticalAnalyzer(self._wikidata_kb).analyze(self._question, self._question_language_code)
         )
 
     def _do_with_terms(self, parsed_terms: Iterable[Term]):
@@ -347,7 +517,7 @@ class SimpleWikidataSparqlHandler(_BaseWikidataSparqlHandler):
         parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
         with LazyThreadPoolExecutor(max_workers=8) as executor:
             execution_result = executor.map_first_with_result(
-                lambda term: self._knowledge_base.build_sparql(term) if self._knowledge_base.has_results(
+                lambda term: self._wikidata_kb.build_sparql(term) if self._wikidata_kb.has_results(
                     term) else None,
                 ((term,) for term in parsed_terms),
                 bool,
@@ -396,7 +566,7 @@ class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
         elif isinstance(disambiguation_tree, Iterable):
             # TODO: tous les retourner ?
             execution_result = executor.map_first_with_result(
-                lambda term: self._knowledge_base.build_sparql(term) if self._knowledge_base.has_results(
+                lambda term: self._wikidata_kb.build_sparql(term) if self._wikidata_kb.has_results(
                     term) else None,
                 ((term,) for term in sorted(disambiguation_tree, key=lambda term: -term.score)),
                 bool,
