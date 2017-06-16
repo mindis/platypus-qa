@@ -19,7 +19,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
-import sys
 import time
 import unittest
 
@@ -30,6 +29,8 @@ from platypus_qa.request_handler import PPPRequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
 
 logging.basicConfig(level=logging.WARNING)
+
+_logger = logging.getLogger('test_ppp_module')
 
 
 class RequestHandlerTest(unittest.TestCase):
@@ -53,10 +54,12 @@ class RequestHandlerTest(unittest.TestCase):
                 resource_results = [result for result in results
                                     if isinstance(result.tree, Resource) or
                                     (isinstance(result.tree, List) and result.tree.list)]
-                if not resource_results:
-                    print(
-                        '[ppp_module_test] No resources found for the {} question {}.\nReturned results: {}'.format(
-                            language_code, question, results), file=sys.stderr)
+                if resource_results:
+                    _logger.warning('[ppp_module_test] Resources found for the {} question {}.'
+                                    .format(language_code, question))
+                else:
+                    _logger.warning('[ppp_module_test] No resources found for the {} question {}.\nReturned results: {}'
+                                    .format(language_code, question, results))
                     bad_count += 1
                 time.sleep(5)  # to don't overload servers
         if bad_count > 0:
