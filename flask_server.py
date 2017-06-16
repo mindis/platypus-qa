@@ -31,6 +31,7 @@ from werkzeug.exceptions import BadRequest
 from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
     DisambiguatedWikidataSparqlHandler
+from platypus_qa.samples import SAMPLE_QUESTIONS
 
 logging.basicConfig(level=logging.INFO)
 
@@ -70,6 +71,12 @@ def root():
     return jsonify([x.as_dict() for x in _ppp_request_handler.answer(ppp_request)])
 
 
+@app.route('/v0/samples', methods=['GET'])
+def samples():
+    lang = request.accept_languages.best_match(list(SAMPLE_QUESTIONS.keys()))
+    return jsonify(list(SAMPLE_QUESTIONS.get(lang, ())))
+
+
 @app.route('/v0/wikidata-sparql', methods=['GET'])
 def wikidata_sparql():
     return _simple_wikidata_sparql_handler.build_sparql()
@@ -96,6 +103,28 @@ def spec():
         'host': app.config['HOST'],
         'basePath': '/v0',
         'paths': {
+            '/samples': {
+                'get': {
+                    'summary': 'Returns a list of supported questions',
+                    'parameters': [
+                        {
+                            'name': 'Accept-Language',
+                            'in': 'header',
+                            'description': 'The language code of the returned sample questions like "en"',
+                            'required': True,
+                            'type': 'string'
+                        }
+                    ],
+                    'produces': [
+                        'application/json'
+                    ],
+                    'responses': {
+                        '200': {
+                            'description': 'The list of questions'
+                        }
+                    }
+                }
+            },
             '/wikidata-sparql': {
                 'get': {
                     'summary': 'Builds a SPARQL query from a natural language question',
