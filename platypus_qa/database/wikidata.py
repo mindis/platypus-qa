@@ -260,81 +260,89 @@ class _WikidataQuerySparqlBuilder:
 
 
 _wikidata_to_schema = {
-    'http://www.wikidata.org/prop/direct/P921': 'http://schema.org/about',  # main subject
-    'http://www.wikidata.org/prop/direct/P161': 'http://schema.org/actor',  # cast member
-    'http://www.wikidata.org/prop/direct/P2360': 'http://schema.org/audience',  # intended public
-    'http://www.wikidata.org/prop/direct/P51': 'http://schema.org/audio',  # audio
-    'http://www.wikidata.org/prop/direct/P50': 'http://schema.org/author',  # author
-    'http://www.wikidata.org/prop/direct/P166': 'http://schema.org/award',  # award received
-    'http://www.wikidata.org/prop/direct/P569': 'http://schema.org/birthDate',  # date of birth
-    'http://www.wikidata.org/prop/direct/P19': 'http://schema.org/birthPlace',  # place of birth
-    'http://www.wikidata.org/prop/direct/P1716': 'http://schema.org/brand',  # brand
-    'http://www.wikidata.org/prop/direct/P175': 'http://schema.org/byArtist',  # performer
-    'http://www.wikidata.org/prop/direct/P674': 'http://schema.org/character',  # characters
-    'http://www.wikidata.org/prop/direct/P40': 'http://schema.org/children',  # child
-    'http://www.wikidata.org/prop/direct/P2860': 'http://schema.org/citation',  # cites
-    'http://www.wikidata.org/prop/direct/P86': 'http://schema.org/composer',  # composer
-    'http://www.wikidata.org/prop/direct/P840': 'http://schema.org/contentLocation',  # narrative location
-    'http://www.wikidata.org/prop/direct/P1657': 'http://schema.org/contentRating',  # MPAA film rating
-    'http://www.wikidata.org/prop/direct/P767': 'http://schema.org/contributor',  # contributor
-    'http://www.wikidata.org/prop/direct/P495': 'http://schema.org/countryOfOrigin',  # country of origin
-    'http://www.wikidata.org/prop/direct/P170': 'http://schema.org/creator',  # creator
-    'http://www.wikidata.org/prop/direct/P571': 'http://schema.org/dateCreated',  # inception
-    'http://www.wikidata.org/prop/direct/P577': 'http://schema.org/datePublished',  # publication date
-    'http://www.wikidata.org/prop/direct/P2894': 'http://schema.org/dayOfWeek',  # day of week
-    'http://www.wikidata.org/prop/direct/P570': 'http://schema.org/deathDate',  # date of death
-    'http://www.wikidata.org/prop/direct/P20': 'http://schema.org/deathPlace',  # place of death
-    'http://www.wikidata.org/prop/direct/P57': 'http://schema.org/director',  # director
-    'http://www.wikidata.org/prop/direct/P2043': 'http://schema.org/distance',  # length
-    'http://www.wikidata.org/prop/direct/P2047': 'http://schema.org/duration',  # duration
-    'http://www.wikidata.org/prop/direct/P98': 'http://schema.org/editor',  # editor
-    'http://www.wikidata.org/prop/direct/P582': 'http://schema.org/endDate',  # end time
-    'http://www.wikidata.org/prop/direct/P1811': 'http://schema.org/episodes',  # list of episodes
-    'http://www.wikidata.org/prop/direct/P734': 'http://schema.org/familyName',  # family name
-    'http://www.wikidata.org/prop/direct/P3090': 'http://schema.org/flightNumber',  # flight number
-    'http://www.wikidata.org/prop/direct/P112': 'http://schema.org/founder',  # founder
-    'http://www.wikidata.org/prop/direct/P21': 'http://schema.org/gender',  # sex or gender
-    'http://www.wikidata.org/prop/direct/P136': 'http://schema.org/genre',  # genre
-    'http://www.wikidata.org/prop/direct/P625': 'http://schema.org/geo',  # coordinate location
-    'http://www.wikidata.org/prop/direct/P735': 'http://schema.org/givenName',  # given name
-    'http://www.wikidata.org/prop/direct/P527': 'http://schema.org/hasPart',  # has part
-    'http://www.wikidata.org/prop/direct/P2048': 'http://schema.org/height',  # height
-    'http://www.wikidata.org/prop/direct/P238': 'http://schema.org/iataCode',  # IATA airport code
-    'http://www.wikidata.org/prop/direct/P239': 'http://schema.org/icaoCode',  # ICAO airport code
-    'http://www.wikidata.org/prop/direct/P110': 'http://schema.org/illustrator',  # illustrator
-    'http://www.wikidata.org/prop/direct/P18': 'http://schema.org/image',  # image
-    'http://www.wikidata.org/prop/direct/P407': 'http://schema.org/inLanguage',  # language of work or name
-    'http://www.wikidata.org/prop/direct/P364': 'http://schema.org/inLanguage',  # original language of work
-    'http://www.wikidata.org/prop/direct/P361': 'http://schema.org/isPartOf',  # part of
-    'http://www.wikidata.org/prop/direct/P1243': 'http://schema.org/isrcCode',  # International Standard Recording Code
-    'http://www.wikidata.org/prop/direct/P433': 'http://schema.org/issueNumber',  # issue
-    'http://www.wikidata.org/prop/direct/P275': 'http://schema.org/license',  # license
-    'http://www.wikidata.org/prop/direct/P276': 'http://schema.org/location',  # location
-    'http://www.wikidata.org/prop/direct/P154': 'http://schema.org/logo',  # logo image
-    'http://www.wikidata.org/prop/direct/P463': 'http://schema.org/memberOf',  # member of
-    'http://www.wikidata.org/prop/direct/P2561': 'http://schema.org/name',  # name
-    'http://www.wikidata.org/prop/direct/P1476': 'http://schema.org/name',  # title
-    'http://www.wikidata.org/prop/direct/P27': 'http://schema.org/nationality',  # country of citizenship
-    'http://www.wikidata.org/prop/direct/P1113': 'http://schema.org/numberOfEpisodes',  # number of episodes
-    'http://www.wikidata.org/prop/direct/P1104': 'http://schema.org/numberOfPages',  # number of pages
-    'http://www.wikidata.org/prop/direct/P710': 'http://schema.org/participant',  # participant
-    'http://www.wikidata.org/prop/direct/P1545': 'http://schema.org/position',  # series ordinal
-    'http://www.wikidata.org/prop/direct/P162': 'http://schema.org/producer',  # producer
-    'http://www.wikidata.org/prop/direct/P176': 'http://schema.org/provider',  # manufacturer
-    'http://www.wikidata.org/prop/direct/P123': 'http://schema.org/publisher',  # publisher
-    'http://www.wikidata.org/prop/direct/P483': 'http://schema.org/recordedAt',  # recorded at
-    'http://www.wikidata.org/prop/direct/P444': 'http://schema.org/reviewRating',  # review score
-    'http://www.wikidata.org/prop/direct/P453': 'http://schema.org/roleName',  # character role
-    'http://www.wikidata.org/prop/direct/P460': 'http://schema.org/sameAs',  # said to be the same as
-    'http://www.wikidata.org/prop/direct/P26': 'http://schema.org/spouse',  # spouse
-    'http://www.wikidata.org/prop/direct/P580': 'http://schema.org/startDate',  # start time
-    'http://www.wikidata.org/prop/direct/P249': 'http://schema.org/tickerSymbol',  # ticker symbol
-    'http://www.wikidata.org/prop/direct/P655': 'http://schema.org/translator',  # translator
-    'http://www.wikidata.org/prop/direct/P2699': 'http://schema.org/url',  # URL
-    'http://www.wikidata.org/prop/direct/P10': 'http://schema.org/video',  # video
-    'http://www.wikidata.org/prop/direct/P478': 'http://schema.org/volumeNumber',  # volume
-    'http://www.wikidata.org/prop/direct/P2049': 'http://schema.org/width',  # width
-    'http://www.wikidata.org/prop/direct/P108': 'http://schema.org/worksFor',  # employer
+    'http://www.wikidata.org/prop/direct/P10': 'http://schema.org/video',
+    'http://www.wikidata.org/prop/direct/P108': 'http://schema.org/worksFor',
+    'http://www.wikidata.org/prop/direct/P110': 'http://schema.org/illustrator',
+    'http://www.wikidata.org/prop/direct/P1104': 'http://schema.org/numberOfPages',
+    'http://www.wikidata.org/prop/direct/P1113': 'http://schema.org/numberOfEpisodes',
+    'http://www.wikidata.org/prop/direct/P112': 'http://schema.org/founder',
+    'http://www.wikidata.org/prop/direct/P123': 'http://schema.org/publisher',
+    'http://www.wikidata.org/prop/direct/P1243': 'http://schema.org/isrcCode',
+    'http://www.wikidata.org/prop/direct/P1329': 'http://schema.org/telephone',
+    'http://www.wikidata.org/prop/direct/P136': 'http://schema.org/genre',
+    'http://www.wikidata.org/prop/direct/P1476': 'http://schema.org/name',
+    'http://www.wikidata.org/prop/direct/P154': 'http://schema.org/logo',
+    'http://www.wikidata.org/prop/direct/P1545': 'http://schema.org/position',
+    'http://www.wikidata.org/prop/direct/P161': 'http://schema.org/actor',
+    'http://www.wikidata.org/prop/direct/P162': 'http://schema.org/producer',
+    'http://www.wikidata.org/prop/direct/P1657': 'http://schema.org/contentRating',
+    'http://www.wikidata.org/prop/direct/P166': 'http://schema.org/award',
+    'http://www.wikidata.org/prop/direct/P170': 'http://schema.org/creator',
+    'http://www.wikidata.org/prop/direct/P1716': 'http://schema.org/brand',
+    'http://www.wikidata.org/prop/direct/P175': 'http://schema.org/byArtist',
+    'http://www.wikidata.org/prop/direct/P176': 'http://schema.org/provider',
+    'http://www.wikidata.org/prop/direct/P18': 'http://schema.org/image',
+    'http://www.wikidata.org/prop/direct/P1811': 'http://schema.org/episodes',
+    'http://www.wikidata.org/prop/direct/P19': 'http://schema.org/birthPlace',
+    'http://www.wikidata.org/prop/direct/P20': 'http://schema.org/deathPlace',
+    'http://www.wikidata.org/prop/direct/P2043': 'http://schema.org/distance',
+    'http://www.wikidata.org/prop/direct/P2047': 'http://schema.org/duration',
+    'http://www.wikidata.org/prop/direct/P2048': 'http://schema.org/height',
+    'http://www.wikidata.org/prop/direct/P2049': 'http://schema.org/width',
+    'http://www.wikidata.org/prop/direct/P21': 'http://schema.org/gender',
+    'http://www.wikidata.org/prop/direct/P2360': 'http://schema.org/audience',
+    'http://www.wikidata.org/prop/direct/P238': 'http://schema.org/iataCode',
+    'http://www.wikidata.org/prop/direct/P239': 'http://schema.org/icaoCode',
+    'http://www.wikidata.org/prop/direct/P2437': 'http://schema.org/numberOfSeasons',
+    'http://www.wikidata.org/prop/direct/P249': 'http://schema.org/tickerSymbol',
+    'http://www.wikidata.org/prop/direct/P2561': 'http://schema.org/name',
+    'http://www.wikidata.org/prop/direct/P26': 'http://schema.org/spouse',
+    'http://www.wikidata.org/prop/direct/P2699': 'http://schema.org/url',
+    'http://www.wikidata.org/prop/direct/P27': 'http://schema.org/nationality',
+    'http://www.wikidata.org/prop/direct/P275': 'http://schema.org/license',
+    'http://www.wikidata.org/prop/direct/P276': 'http://schema.org/location',
+    'http://www.wikidata.org/prop/direct/P2860': 'http://schema.org/citation',
+    'http://www.wikidata.org/prop/direct/P2888': 'http://schema.org/sameAs',
+    'http://www.wikidata.org/prop/direct/P2894': 'http://schema.org/dayOfWeek',
+    'http://www.wikidata.org/prop/direct/P3090': 'http://schema.org/flightNumber',
+    'http://www.wikidata.org/prop/direct/P361': 'http://schema.org/isPartOf',
+    'http://www.wikidata.org/prop/direct/P364': 'http://schema.org/inLanguage',
+    'http://www.wikidata.org/prop/direct/P3931': 'http://schema.org/copyrightHolder',
+    'http://www.wikidata.org/prop/direct/P3970': 'http://schema.org/broadcastChannelId',
+    'http://www.wikidata.org/prop/direct/P40': 'http://schema.org/children',
+    'http://www.wikidata.org/prop/direct/P4032': 'http://schema.org/reviewedBy',
+    'http://www.wikidata.org/prop/direct/P407': 'http://schema.org/inLanguage',
+    'http://www.wikidata.org/prop/direct/P433': 'http://schema.org/issueNumber',
+    'http://www.wikidata.org/prop/direct/P444': 'http://schema.org/reviewRating',
+    'http://www.wikidata.org/prop/direct/P453': 'http://schema.org/roleName',
+    'http://www.wikidata.org/prop/direct/P460': 'http://schema.org/sameAs',
+    'http://www.wikidata.org/prop/direct/P463': 'http://schema.org/memberOf',
+    'http://www.wikidata.org/prop/direct/P478': 'http://schema.org/volumeNumber',
+    'http://www.wikidata.org/prop/direct/P483': 'http://schema.org/recordedAt',
+    'http://www.wikidata.org/prop/direct/P495': 'http://schema.org/countryOfOrigin',
+    'http://www.wikidata.org/prop/direct/P50': 'http://schema.org/author',
+    'http://www.wikidata.org/prop/direct/P51': 'http://schema.org/audio',
+    'http://www.wikidata.org/prop/direct/P527': 'http://schema.org/hasPart',
+    'http://www.wikidata.org/prop/direct/P551': 'http://schema.org/homeLocation',
+    'http://www.wikidata.org/prop/direct/P569': 'http://schema.org/birthDate',
+    'http://www.wikidata.org/prop/direct/P57': 'http://schema.org/director',
+    'http://www.wikidata.org/prop/direct/P570': 'http://schema.org/deathDate',
+    'http://www.wikidata.org/prop/direct/P571': 'http://schema.org/dateCreated',
+    'http://www.wikidata.org/prop/direct/P577': 'http://schema.org/datePublished',
+    'http://www.wikidata.org/prop/direct/P580': 'http://schema.org/startDate',
+    'http://www.wikidata.org/prop/direct/P582': 'http://schema.org/endDate',
+    'http://www.wikidata.org/prop/direct/P625': 'http://schema.org/geo',
+    'http://www.wikidata.org/prop/direct/P655': 'http://schema.org/translator',
+    'http://www.wikidata.org/prop/direct/P674': 'http://schema.org/character',
+    'http://www.wikidata.org/prop/direct/P710': 'http://schema.org/participant',
+    'http://www.wikidata.org/prop/direct/P734': 'http://schema.org/familyName',
+    'http://www.wikidata.org/prop/direct/P735': 'http://schema.org/givenName',
+    'http://www.wikidata.org/prop/direct/P767': 'http://schema.org/contributor',
+    'http://www.wikidata.org/prop/direct/P840': 'http://schema.org/contentLocation',
+    'http://www.wikidata.org/prop/direct/P859': 'http://schema.org/sponsor',
+    'http://www.wikidata.org/prop/direct/P86': 'http://schema.org/musicBy',
+    'http://www.wikidata.org/prop/direct/P921': 'http://schema.org/about',
+    'http://www.wikidata.org/prop/direct/P98': 'http://schema.org/editor'
 }
 
 _s = VariableFormula('s')
