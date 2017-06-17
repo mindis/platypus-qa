@@ -495,7 +495,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
             params['type'] = type_filter
         response = self._request_session_kb.get(self._kb_wikidata_uri + '/search/simple', params=params)
         try:
-            return [result['result'] for result in response.json()['member']]
+            return [result['result'] for result in response.json().get('member', ())]
         except JSONDecodeError:
             _logger.warning('Unexpected response from Wikidata service: {}'.format(response))
             return []
