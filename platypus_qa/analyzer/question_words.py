@@ -68,7 +68,7 @@ _dónde = OpenQuestionWord('dónde',
                           property_modifiers=['lugar de {}'])
 _cuándo = OpenQuestionWord('cuándo', expected_properties=['fecha', 'hora'],
                            property_modifiers=['fecha de {}', 'hora de {}', 'año de {}'],
-                           expected_type=Type.from_entity(platypus_calendar)),
+                           expected_type=Type.from_entity(platypus_calendar))
 _question_words = {
     'de': {
         'wer': OpenQuestionWord('wer'),
