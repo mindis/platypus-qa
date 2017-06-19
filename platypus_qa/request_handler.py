@@ -262,8 +262,12 @@ class PPPRequestHandler:
                 return True
         return False
 
-    def _format_value(self, value: Union[Entity, Literal]) -> Resource:
-        return self._json_ld_to_resource(self._knowledge_base.format_value(value, self._request.response_language))
+    def _format_value(self, value: Union[Entity, Literal]) -> typing.Optional[Resource]:
+        try:
+            return self._json_ld_to_resource(self._knowledge_base.format_value(value, self._request.response_language))
+        except ValueError as e:
+            _logger.warning(e)
+            return None
 
     @staticmethod
     def _json_ld_to_resource(json_ld):
@@ -390,8 +394,12 @@ class RequestHandler:
                 return True
         return False
 
-    def _format_value(self, value: Union[Entity, Literal]) -> Dict:
-        return self._knowledge_base.format_value(value, self._accept_languages)
+    def _format_value(self, value: Union[Entity, Literal]) -> typing.Optional[Dict]:
+        try:
+            return self._knowledge_base.format_value(value, self._accept_languages)
+        except ValueError as e:
+            _logger.warning(e)
+            return None
 
 
 class _BaseWikidataSparqlHandler:
