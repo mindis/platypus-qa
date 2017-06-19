@@ -104,14 +104,12 @@ SAMPLE_QUESTIONS = {
         '¿Qué es I, Robot?',
         '¿Qué es Robin Hood?',
         'Daños el primer ministro de Francia.',
-        'libros de Barack Obama',
-        'Lista de libros de Barack Obama',
-        # TODO '¿Cuál es la ubicación de Big Ben?',
+        '¿Cuál es la ubicación de Big Ben?',
         '¿Dónde está el Big Ben?',
-        # TODO '¿Dónde está Lyon?',
-        '¿Dónde está Paris?',
+        '¿Dónde está Lyon?',
+        '¿Dónde está París?',
         # TODO 'El lugar de nacimiento del presidente de Francia',
-        # TODO '¿Quién nació en 1960?'
+        '¿Quién nació en 1960?'
     },
     'fr': {
         'Quelle est la date de naissance de George Washington?',
