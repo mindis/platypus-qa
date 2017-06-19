@@ -126,7 +126,6 @@ SAMPLE_QUESTIONS = {
         'Sherlock Holmes',
         'Guatemala',
         'Qui est Bach?',
-        'Qu\'est-ce que “P=NP”?',
         'Qui est l\'auteur du Petit Prince ?',
         'Quel est la capitale de l\'Inde ?',
         'Qui est le premier ministre de la France ?',
