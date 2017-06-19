@@ -24,7 +24,10 @@ import unittest
 
 from ppp_datamodel import Sentence, Resource, List, Request
 
+from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger
+from platypus_qa.nlp.core_nlp import CoreNLPParser
+from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 from platypus_qa.request_handler import PPPRequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
 
@@ -40,9 +43,9 @@ class RequestHandlerTest(unittest.TestCase):
 
     def testQuestions(self):
         request_handler = PPPRequestHandler(
-            'https://corenlp.askplatyp.us/1.7/',
-            'https://syntaxnet.askplatyp.us/v1/parsey-universal-full',
-            'https://kb.askplatyp.us/api/v1',
+            [CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']),
+             SyntaxNetParser(['https://syntaxnet.askplatyp.us/v1/parsey-universal-full'])],
+            WikidataKnowledgeBase('https://kb.askplatyp.us/api/v1', compacted_individuals=False),
             DummyDictLogger()
         )
         bad_count = 0
