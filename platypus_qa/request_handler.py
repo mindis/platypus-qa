@@ -243,11 +243,14 @@ class PPPRequestHandler:
 
         sympy_tree = Translator().to_sympy_tree(calchas_tree)
         output_string = str(sympy_tree)
+        output_latex = latex(sympy_tree)
 
         if not is_interesting(str(tree.value), output_string) and math_notation == IsMath.Maybe:
             return []
+        if len(output_latex) > 1 and output_latex.isalpha():
+            return []
 
-        output_tree = MathLatexResource(output_string, latex=latex(sympy_tree))
+        output_tree = MathLatexResource(output_string, latex=output_latex)
         measures = {
             'accuracy': 1,
             'relevance': relevance(tree.value, output_string)
@@ -371,8 +374,11 @@ class RequestHandler:
 
         sympy_tree = Translator().to_sympy_tree(calchas_tree)
         output_string = str(sympy_tree)
+        output_latex = latex(sympy_tree)
 
         if not is_interesting(str(self._question), output_string) and math_notation == IsMath.Maybe:
+            return []
+        if len(output_latex) > 1 and output_latex.isalpha():
             return []
 
         return [{
@@ -381,7 +387,7 @@ class RequestHandler:
                 'name': output_string,
                 'rdf:value': {
                     '@type': 'platypus:LaTeX',
-                    '@value': latex(sympy_tree)
+                    '@value': output_latex
                 }
             },
             'resultScore': relevance(self._question, output_string)
