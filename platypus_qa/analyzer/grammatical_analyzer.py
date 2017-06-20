@@ -126,8 +126,12 @@ class GrammaticalAnalyzer:
         self._variable_counter = 0
 
     def analyze(self, text: str) -> List[Term]:
+        sentences = self._parser.parse(text, self._language_code)
+        if len(sentences) != 1:
+            _logger.warning('GrammaticalAnalyzer only supports single sentences: '.format(sentences))
+            return []
         for sentence in self._parser.parse(text, self._language_code):
-            return self._analyze(sentence)  # TODO: multiple sentences?
+            return self._analyze(sentence)
         return []
 
     def _analyze(self, sentence: Sentence) -> List[Term]:
