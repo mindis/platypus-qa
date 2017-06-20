@@ -96,9 +96,7 @@ SAMPLE_QUESTIONS = {
         '¿Quién es el primer ministro de Francia?',
         '¿Quién es el presidente de Francia?',
         # TODO '¿Cuál es la fecha de nacimiento de Bob Marley?',
-        # TODO '¿Cuál es la velocidad del guepardo?',
         '¿Cuáles son los hijos de la esposa de Barack Obama?',
-        # TODO '¿Cuál es el ancho de un guepardo?',
         '¿Cuánto es la altura del Big Ben?',
         '¿Qué es un tenedor?',
         '¿Qué es I, Robot?',
@@ -111,10 +109,26 @@ SAMPLE_QUESTIONS = {
         'Cuando nació George Washinton?',
         # TODO 'El lugar de nacimiento del presidente de Francia',
         '¿Quién nació en 1960?',
-        'Dónde muertó Abraham Lincoln?'
+        'Dónde muertó Abraham Lincoln?',
+        'Lugar de nacimiento de Jules César?',
+        '¿Quién es el presidente del país de la Torre Eiffel?',
+        'sqrt(180)',
+        'N[Pi, 42]',
+        'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
+        'Sum[x^n/n!, {n,0,Infinity}]',
+        'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
+        'Guatemala',
+        'Quiénes son los miembros de los Beatles?',
+        '¿Dónde está el Museo del Louvre?',
+        '¿Cuál es la población de Japón?',
+        '¿Dónde está Notre-Dame de París?',
+        '¿Dónde está el Canal de Panamá?',
+        'El número atómico del polonio',
+        '¿Quién es el marido de Lee Krasner?',
+        '¿Dónde está Cristo Redentor?'
     },
     'fr': {
-        'Quelle est la date de naissance de George Washington?',
+        'Quelle est la date de naissance de George Washington ?',
         'Quand est né George Washington ?',
         'Où est né Jules César ?',
         'Quand était la bataille d\'Actium ?',
@@ -179,6 +193,7 @@ SAMPLE_QUESTIONS = {
         'Qui est le mari de Lee Krasner ?',
         'Quelle est la nationalité du mari de Lee Krasner ?',
         'Où est le Christ Redempteur ?',
-        'Quel est le président du pays du Christ Redémpteur ?'
+        'Quel est le président du pays du Christ Redémpteur ?',
+        'Qui est le président du pays de la tour Effeil ?'
     }
 }
