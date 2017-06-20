@@ -108,8 +108,10 @@ SAMPLE_QUESTIONS = {
         '¿Dónde está el Big Ben?',
         '¿Dónde está Lyon?',
         '¿Dónde está París?',
+        'Cuando nació George Washinton?',
         # TODO 'El lugar de nacimiento del presidente de Francia',
-        '¿Quién nació en 1960?'
+        '¿Quién nació en 1960?',
+        'Dónde muertó Abraham Lincoln?'
     },
     'fr': {
         'Quelle est la date de naissance de George Washington?',

@@ -380,6 +380,16 @@ _hadcoded_relations = {
         'dead location': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual)),
         'wrote': Function(_s, Function(_o, TripleFormula(_o, _property_author, _s)))
+    },
+    'es': {
+        'fecha de nació': _relation_for_property(
+            ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
+        'lugar de nació': _relation_for_property(
+            ObjectProperty('http://www.wikidata.org/prop/direct/P19', owl_NamedIndividual, owl_NamedIndividual)),
+        'fecha de muerto': _relation_for_property(
+            ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
+        'lugar de muerto': _relation_for_property(
+            ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual)),
     }
 }
 
