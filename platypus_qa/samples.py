@@ -39,7 +39,7 @@ SAMPLE_QUESTIONS = {
         'Limit[Sum[1/i, {i,1,n}]-Log[n], n->Infinity]',
         'Sum[x^n/n!, {n,0,Infinity}]',
         'Solve[Exp[x]/2+Exp[-x]/2==y,x]',
-        'Who are the daughters of the wife of the husband of the wife of the president of the United States?',
+        'Who are the daughters of the wife of the president of the United States?',
         'Where was Ulysses S. Grant born?',
         'Where was George Washington born?',
         'Where is the Taj Mahal?',

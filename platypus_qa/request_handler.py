@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
+import signal
 import time
 import typing
 from concurrent.futures import Future, TimeoutError
@@ -29,12 +30,6 @@ import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
-from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
-from ppp_datamodel.communication import TraceItem, Response
-from pyld import jsonld
-from sympy import latex
-from werkzeug.exceptions import NotFound
-
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term, ValueFormula
@@ -44,10 +39,15 @@ from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPD
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.model import NLPParser
+from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
+from ppp_datamodel.communication import TraceItem, Response
+from pyld import jsonld
+from sympy import latex
+from werkzeug.exceptions import NotFound
 
 _logger = logging.getLogger('request_handler')
 
-PROCESSING_TIMEOUT = 10
+PROCESSING_TIMEOUT = 15
 _platypus_context = {
     '@vocab': 'http://schema.org/',
     'goog': 'http://schema.googleapis.com/',
@@ -66,6 +66,7 @@ _platypus_context = {
 }
 
 
+# TODO: remove, kept here for backward compatiblity
 def _safe_response_builder(func):
     def func_wrapper(self, *args):
         try:
@@ -77,6 +78,32 @@ def _safe_response_builder(func):
             return []
 
     return func_wrapper
+
+
+def _safe_limited_response_builder(timeout):
+    def raise_timeout_exception(signum, frame):
+        raise TimeoutError()
+
+    def wrapper(func):
+        def func_wrapper(self, *args):
+            try:
+                signal.signal(signal.SIGALRM, raise_timeout_exception)  # TODO: POSIX only
+                signal.alarm(timeout)
+                result = func(self, *args)
+                signal.alarm(0)
+                return result
+            except KeyboardInterrupt:
+                raise
+            except TimeoutError:
+                _logger.warning('Processing timout')
+                return []
+            except Exception as e:
+                _logger.warning(e, exc_info=True)
+                return []
+
+        return func_wrapper
+
+    return wrapper
 
 
 class LazyThreadPoolExecutor(ThreadPoolExecutor):
@@ -135,26 +162,25 @@ class PPPRequestHandler:
         self._request = request
         self._language = self._find_language()
 
-        all_results = []
-        with LazyThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(self._do_simple_execute), executor.submit(self._do_cas)] + \
-                      [executor.submit(self._do_with_grammatical_analysis, parser) for parser in self._parsers]
-            results = _first_future_with_cond(futures, self._has_resource, [], PROCESSING_TIMEOUT)
-            if self._has_resource(results):
-                all_results.extend(results)
+        results = self._do_simple_execute()
+        if not self._has_resource(results):
+            results = self._do_cas()
+        for parser in self._parsers:
+            if not self._has_resource(results):
+                results = self._do_with_grammatical_analysis(parser)
 
         if isinstance(self._request.tree, Sentence):
             self._request_logger.log({
                 'question': self._request.tree.value,
                 'language': self._language,
-                'with_results': bool(all_results),
+                'with_results': self._has_resource(results),
                 'timestamp': timestamp,
                 'answer_time': time.time() - timestamp
             })
 
-        return all_results
+        return results
 
-    @_safe_response_builder
+    @_safe_limited_response_builder(PROCESSING_TIMEOUT)
     def _do_with_grammatical_analysis(self, parser: NLPParser):
         if self._language not in parser.supported_languages:
             return []
@@ -166,7 +192,7 @@ class PPPRequestHandler:
             parser.__class__.__name__
         )
 
-    @_safe_response_builder
+    @_safe_limited_response_builder(5)
     def _do_simple_execute(self):
         tree = self._request.tree
         if isinstance(tree, Sentence):
@@ -223,7 +249,7 @@ class PPPRequestHandler:
                         ))
             return results
 
-    @_safe_response_builder
+    @_safe_limited_response_builder(5)
     def _do_cas(self):
         tree = self._request.tree
         if not isinstance(tree, Sentence):
@@ -301,11 +327,10 @@ class RequestHandler:
 
         timestamp = time.time()
 
-        results = []
-        with LazyThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(self._do_cas)] + \
-                      [executor.submit(self._do_with_grammatical_analysis, parser) for parser in self._parsers]
-            results.extend(_first_future_with_cond(futures, bool, [], PROCESSING_TIMEOUT))
+        results = self._do_cas()
+        for parser in self._parsers:
+            if not results:
+                results = self._do_with_grammatical_analysis(parser)
 
         self._request_logger.log({
             'question': self._question,
@@ -328,7 +353,7 @@ class RequestHandler:
             return langdetect.detect(text)  # TODO: more clever
         return language_code
 
-    @_safe_response_builder
+    @_safe_limited_response_builder(PROCESSING_TIMEOUT)
     def _do_with_grammatical_analysis(self, parser: NLPParser):
         if self._question_language_code not in parser.supported_languages:
             return []
@@ -358,7 +383,7 @@ class RequestHandler:
                                    } for value in executor.map(self._format_value, query_results) if value is not None)
             return results
 
-    @_safe_response_builder
+    @_safe_limited_response_builder(5)
     def _do_cas(self):
         math_notation = is_math(self._question)
         if math_notation == IsMath.No:
