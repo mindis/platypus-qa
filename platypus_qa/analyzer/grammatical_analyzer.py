@@ -393,9 +393,8 @@ class GrammaticalAnalyzer:
     def _find_relations_with_pattern(self, label, nounified_patterns):
         if nounified_patterns is None:
             nounified_patterns = ('{}',)
-        return list(chain.from_iterable(
-            self._knowledge_base.relations_from_label(nounified_pattern.format(label), self._language_code)
-            for nounified_pattern in nounified_patterns))
+        return self._knowledge_base.relations_from_labels(
+            (nounified_pattern.format(label) for nounified_pattern in nounified_patterns), self._language_code)
 
     def _literals_for_node(self, nodes, expected_type: Type):
         input_str = self._nodes_to_string(nodes)

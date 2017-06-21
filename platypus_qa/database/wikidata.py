@@ -23,7 +23,7 @@ import re
 import urllib
 from functools import lru_cache
 from json import JSONDecodeError
-from typing import Dict, List, Union, Optional, Tuple
+from typing import Dict, List, Union, Optional, Tuple, Iterable
 
 import editdistance
 import requests
@@ -431,25 +431,24 @@ class WikidataKnowledgeBase(KnowledgeBase):
                     results]
 
     @lru_cache(maxsize=8192)
-    def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
+    def relations_from_labels(self, labels: Iterable[str], language_code: str) -> List[Function[Function[Formula]]]:
         if language_code not in self._relations_for_label:
             self._fill_relations_for_label(language_code)
 
-        label = label.strip().lower()
-        if label in self._relations_for_label[language_code]:
-            return self._relations_for_label[language_code][label]
-
-        for relations in self._relations_by_edit_distance(label, language_code):
+        labels = [label.strip().lower() for label in labels]
+        for distance in range(0, 3):
+            relations = self._relations_by_edit_distance(labels, language_code, distance)
             if relations:
-                return relations
+                return list(relations)
         return []
 
-    def _relations_by_edit_distance(self, input_label: str, language_code: str, max_distance: int = 2):
-        results = [set() for _ in range(max_distance + 1)]
+    def _relations_by_edit_distance(self, input_labels: List[str], language_code: str, distance: int):
+        results = set()
         for ref_label, properties in self._relations_for_label[language_code].items():
-            dist = editdistance.eval(input_label, ref_label)
-            if dist <= max_distance:
-                results[dist].update(properties)
+            for input_label in input_labels:
+                dist = editdistance.eval(input_label, ref_label)
+                if dist == distance:
+                    results.update(properties)
         return results
 
     def _fill_relations_for_label(self, language_code: str):

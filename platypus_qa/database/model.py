@@ -17,23 +17,29 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
-
-from typing import List, Union
+from itertools import chain
+from typing import List, Union, Iterable
 
 from platypus_qa.database.formula import Term, Function, Formula
 from platypus_qa.database.owl import Literal, Class, owl_Thing, Entity
 
 
 class KnowledgeBase:
-    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[
-        Function[Formula]]:
+    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> \
+            List[Function[Formula]]:
         raise NotImplementedError("KnowledgeBase.individuals_from_label is not implemented")
 
     def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
         """
         :return: functions λ s . λ o . X where s is the subject and o the object of the relation
         """
-        raise NotImplementedError("KnowledgeBase.properties_from_label is not implemented")
+        return self.relations_from_labels((label,), language_code)
+
+    def relations_from_labels(self, labels: Iterable[str], language_code: str) -> List[Function[Function[Formula]]]:
+        """
+        :return: functions λ s . λ o . X where s is the subject and o the object of the relation
+        """
+        return list(chain.from_iterable(self.relations_from_label(label, language_code) for label in labels))
 
     def type_relations(self) -> List[Function[Function[Formula]]]:
         """
