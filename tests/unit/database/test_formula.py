@@ -25,7 +25,6 @@ from platypus_qa.database.owl import *
 
 _x = VariableFormula('x')
 _y = VariableFormula('y')
-_schema_Person = Class('http://schema.org/Person', (owl_Thing,))
 _foo = ValueFormula(XSDStringLiteral("foo"))
 _bar = ValueFormula(XSDStringLiteral("bar"))
 _false = ValueFormula(XSDBooleanLiteral(False))
@@ -33,8 +32,8 @@ _0 = ValueFormula(XSDDecimalLiteral(Decimal(0)))
 _1 = ValueFormula(XSDDecimalLiteral(Decimal(1)))
 _2 = ValueFormula(XSDDecimalLiteral(Decimal(2)))
 _2016 = ValueFormula(XSDDateTimeLiteral(2016, 0, 0, 0, 0, 0))
-_schema_name = ValueFormula(DatatypeProperty('http://schema.org/name', _schema_Person, xsd_string))
-_JohnDoe = ValueFormula(NamedIndividual('http://example.com/me', (_schema_Person,)))
+_schema_name = ValueFormula(DatatypeProperty('http://schema.org/name', schema_Person, xsd_string))
+_JohnDoe = ValueFormula(NamedIndividual('http://example.com/me', (schema_Person,)))
 
 
 class _FormulaTest(unittest.TestCase):
@@ -44,9 +43,9 @@ class _FormulaTest(unittest.TestCase):
         self.assertEqual(Type.bottom(), Type.bottom() & Type.bottom())
         self.assertEqual(Type.bottom(), Type.bottom() | Type.bottom())
 
-        self.assertEqual(Type.from_entity(_schema_Person),
-                         Type.from_entity(owl_Thing) & Type.from_entity(_schema_Person))
-        self.assertEqual(Type.from_entity(owl_Thing), Type.from_entity(owl_Thing) | Type.from_entity(_schema_Person))
+        self.assertEqual(Type.from_entity(schema_Person),
+                         Type.from_entity(owl_Thing) & Type.from_entity(schema_Person))
+        self.assertEqual(Type.from_entity(owl_Thing), Type.from_entity(owl_Thing) | Type.from_entity(schema_Person))
         self.assertEqual(Type.bottom(), Type.from_entity(owl_Thing) & Type.from_entity(owl_Nothing))
         self.assertEqual(Type.from_entity(owl_Thing), Type.from_entity(owl_Thing) | Type.from_entity(owl_Nothing))
 
@@ -55,30 +54,30 @@ class _FormulaTest(unittest.TestCase):
         self.assertEqual(Type.bottom(), Type.from_entity(xsd_decimal) & Type.from_entity(xsd_string))
 
         self.assertGreater(Type.top(), Type.bottom())
-        self.assertGreater(Type.from_entity(owl_Thing), Type.from_entity(_schema_Person))
+        self.assertGreater(Type.from_entity(owl_Thing), Type.from_entity(schema_Person))
         self.assertGreater(Type.from_entity(rdfs_Literal), Type.from_entity(xsd_string))
         self.assertGreater(Type.from_entity(xsd_string) | Type.from_entity(xsd_decimal), Type.from_entity(xsd_decimal))
 
         self.assertGreaterEqual(Type.top(), Type.bottom())
-        self.assertGreaterEqual(Type.from_entity(owl_Thing), Type.from_entity(_schema_Person))
+        self.assertGreaterEqual(Type.from_entity(owl_Thing), Type.from_entity(schema_Person))
         self.assertGreaterEqual(Type.from_entity(rdfs_Literal), Type.from_entity(xsd_string))
         self.assertGreaterEqual(Type.from_entity(xsd_string) | Type.from_entity(xsd_decimal),
                                 Type.from_entity(xsd_decimal))
         self.assertGreaterEqual(Type.from_entity(xsd_string), Type.from_entity(xsd_string))
-        self.assertGreaterEqual(Type.from_entity(_schema_Person), Type.from_entity(_schema_Person))
+        self.assertGreaterEqual(Type.from_entity(schema_Person), Type.from_entity(schema_Person))
 
         self.assertLess(Type.bottom(), Type.top())
-        self.assertLess(Type.from_entity(_schema_Person), Type.from_entity(owl_Thing))
+        self.assertLess(Type.from_entity(schema_Person), Type.from_entity(owl_Thing))
         self.assertLess(Type.from_entity(xsd_string), Type.from_entity(rdfs_Literal))
         self.assertLess(Type.from_entity(xsd_decimal), Type.from_entity(xsd_string) | Type.from_entity(xsd_decimal))
 
         self.assertLessEqual(Type.bottom(), Type.top())
-        self.assertLessEqual(Type.from_entity(_schema_Person), Type.from_entity(owl_Thing))
+        self.assertLessEqual(Type.from_entity(schema_Person), Type.from_entity(owl_Thing))
         self.assertLessEqual(Type.from_entity(xsd_string), Type.from_entity(rdfs_Literal))
         self.assertLessEqual(Type.from_entity(xsd_decimal),
                              Type.from_entity(xsd_string) | Type.from_entity(xsd_decimal))
         self.assertLessEqual(Type.from_entity(xsd_string), Type.from_entity(xsd_string))
-        self.assertLessEqual(Type.from_entity(_schema_Person), Type.from_entity(_schema_Person))
+        self.assertLessEqual(Type.from_entity(schema_Person), Type.from_entity(schema_Person))
 
         self.assertEqual(Type.bottom(), owl_Nothing)
         self.assertGreater(Type.top(), owl_Thing)
@@ -87,8 +86,8 @@ class _FormulaTest(unittest.TestCase):
         self.assertLessEqual(Type.bottom(), owl_Nothing)
 
     def testValueFormula(self):
-        self.assertEqual(Type.from_entity(_schema_Person),
-                         ValueFormula(NamedIndividual('wd:Q42', (_schema_Person,))).type)
+        self.assertEqual(Type.from_entity(schema_Person),
+                         ValueFormula(NamedIndividual('wd:Q42', (schema_Person,))).type)
         self.assertEqual(Type.from_entity(xsd_string), ValueFormula(XSDStringLiteral('foo')).type)
         self.assertTrue(true_formula)
         self.assertFalse(false_formula)
@@ -256,11 +255,11 @@ class _FormulaTest(unittest.TestCase):
             Function(_x, EqualityFormula(_x, ValueFormula(XSDStringLiteral('foo')))).argument_type
         )
         self.assertEqual(
-            Type.from_entity(_schema_Person),
+            Type.from_entity(schema_Person),
             Function(_x, TripleFormula(_x, _schema_name, _foo)).argument_type
         )
         self.assertEqual(
-            Type.from_entity(_schema_Person),
+            Type.from_entity(schema_Person),
             Function(_x, TripleFormula(_x, _schema_name, _foo) & TripleFormula(_x, _schema_name, _bar)).argument_type
         )
         self.assertEqual(

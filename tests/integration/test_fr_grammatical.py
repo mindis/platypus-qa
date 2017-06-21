@@ -27,14 +27,11 @@ from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
     ExistsFormula, GreaterFormula
 from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, xsd_decimal, owl_NamedIndividual, Class, \
-    NamedIndividual, XSDDateTimeLiteral, xsd_dateTime
+    NamedIndividual, XSDDateTimeLiteral, xsd_dateTime, schema_Place, schema_Person, geo_wktLiteral
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from tests.simple_knowledge_model import SimpleKnowledgeBase
 
-_schema_GeoCoordinates = Class('http://schema.org/GeoCoordinates', (owl_NamedIndividual,))
-_schema_Person = Class('http://schema.org/Person', (owl_NamedIndividual,))
-_schema_Place = Class('http://schema.org/Place', (owl_NamedIndividual,))
-_schema_Country = Class('http://schema.org/Place', (owl_NamedIndividual, _schema_Place))
+_schema_Country = Class('http://schema.org/Place', (owl_NamedIndividual, schema_Place))
 _schema_Movie = Class('http://schema.org/Movie', (owl_NamedIndividual,))
 _schema_CreativeWork = Class('http://schema.org/CreativeWork', (owl_NamedIndividual,))
 _schema_Book = Class('http://schema.org/Book', (owl_NamedIndividual, _schema_CreativeWork))
@@ -42,22 +39,22 @@ _schema_Book = Class('http://schema.org/Book', (owl_NamedIndividual, _schema_Cre
 _individuals = {
     'France': [_schema_Country],
     'Royaume-Uni': [_schema_Country],
-    'Homer J. Simpson': [_schema_Person],
-    'Bob Marley': [_schema_Person],
+    'Homer J. Simpson': [schema_Person],
+    'Bob Marley': [schema_Person],
     'guépard': [owl_NamedIndividual],
-    'Barack Obama': [_schema_Person],
-    'Big Ben': [_schema_Place],
+    'Barack Obama': [schema_Person],
+    'Big Ben': [schema_Place],
     'I, Robot': [_schema_Movie],
     'Robin des Bois': [_schema_Movie],
     'avion': [owl_NamedIndividual],
     'masculin': [owl_NamedIndividual],
-    'Lyon': [_schema_Place],
-    'Paris': [_schema_Place],
+    'Lyon': [schema_Place],
+    'Paris': [schema_Place],
     'fourchette': [owl_NamedIndividual],
     'ville': [owl_NamedIndividual],
     'Le Petit Prince': [_schema_Book],
     'Vol de Nuit': [_schema_Book],
-    'Strasbourg': [_schema_Place],
+    'Strasbourg': [schema_Place],
     'service civique': [owl_NamedIndividual],
     'civique': [owl_NamedIndividual],
     'service': [owl_NamedIndividual],
@@ -66,25 +63,24 @@ _individuals = {
 }
 
 _object_properties = {
-    'premier ministre': _schema_Person,
-    'président': _schema_Person,
-    'enfants': _schema_Person,
-    'lieu de naissance': _schema_Place,
-    'femme': _schema_Person,
-    'mari': _schema_Person,
-    'acteur principal': _schema_Person,
-    'capitale': _schema_Place,
-    'pilote': _schema_Person,
+    'premier ministre': schema_Person,
+    'président': schema_Person,
+    'enfants': schema_Person,
+    'lieu de naissance': schema_Place,
+    'femme': schema_Person,
+    'mari': schema_Person,
+    'acteur principal': schema_Person,
+    'capitale': schema_Place,
+    'pilote': schema_Person,
     'livres': owl_NamedIndividual,
-    'localisation': _schema_GeoCoordinates,
-    'né à': _schema_Place,
-    'écrits par': _schema_Person,
+    'né à': schema_Place,
+    'écrits par': schema_Person,
     'origine': owl_NamedIndividual,
-    'auteur': _schema_Person,
+    'auteur': schema_Person,
     'type': owl_NamedIndividual,
     'prénom': owl_NamedIndividual,
     'mange': owl_NamedIndividual,
-    'héritier de': _schema_Person
+    'héritier de': schema_Person
 }
 
 _data_properties = {
@@ -95,6 +91,7 @@ _data_properties = {
     'hauteur': xsd_decimal,
     'date': xsd_dateTime,
     'né en': xsd_dateTime,
+    'localisation': geo_wktLiteral,
 }
 
 

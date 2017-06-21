@@ -32,24 +32,22 @@ from ppp_datamodel import Union as U
 from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
     ExistsFormula
 from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, xsd_dateTime, xsd_decimal, owl_NamedIndividual, \
-    Class, NamedIndividual
+    Class, NamedIndividual, schema_Person, schema_Place
 from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPDataModelConverter, PlatypusResource
 from tests.simple_knowledge_model import SimpleKnowledgeBase
 
 _schema_GeoCoordinates = Class("http://schema.org/GeoCoordinates", (owl_NamedIndividual,))
-_schema_Person = Class("http://schema.org/Person", (owl_NamedIndividual,))
-_schema_Place = Class("http://schema.org/Place", (owl_NamedIndividual,))
 _schema_Movie = Class("http://schema.org/Movie", (owl_NamedIndividual,))
 
 _individuals = {
-    'France': [_schema_Place],
-    'Homer J. Simpson': [_schema_Person],
-    'Bob Marley': [_schema_Person],
+    'France': [schema_Place],
+    'Homer J. Simpson': [schema_Person],
+    'Bob Marley': [schema_Person],
     'cheetah': [owl_NamedIndividual],
-    'Barack Obama': [_schema_Person],
+    'Barack Obama': [schema_Person],
     'I, Robot': [_schema_Movie],
-    'Suzanne Collins': [_schema_Person],
-    'John F. Kennedy': [_schema_Person],
+    'Suzanne Collins': [schema_Person],
+    'John F. Kennedy': [schema_Person],
     'book': [owl_NamedIndividual],
     'actor': [owl_NamedIndividual]
 }
@@ -66,7 +64,7 @@ _object_properties = {
     'location': owl_NamedIndividual,
     'coordinates': _schema_GeoCoordinates,
     'type': owl_NamedIndividual,
-    'capital': _schema_Place
+    'capital': schema_Place
 }
 
 _data_properties = {

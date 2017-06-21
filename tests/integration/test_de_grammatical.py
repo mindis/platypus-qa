@@ -25,25 +25,24 @@ from itertools import chain
 
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Function, VariableFormula, ValueFormula, EqualityFormula, TripleFormula
-from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, owl_NamedIndividual, Class, NamedIndividual
+from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, owl_NamedIndividual, Class, NamedIndividual, \
+    schema_Person, schema_Place
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from tests.simple_knowledge_model import SimpleKnowledgeBase
 
 _schema_GeoCoordinates = Class('http://schema.org/GeoCoordinates', (owl_NamedIndividual,))
-_schema_Person = Class('http://schema.org/Person', (owl_NamedIndividual,))
-_schema_Place = Class('http://schema.org/Place', (owl_NamedIndividual,))
-_schema_Country = Class('http://schema.org/Place', (owl_NamedIndividual, _schema_Place))
+_schema_Country = Class('http://schema.org/Place', (owl_NamedIndividual, schema_Place))
 _schema_Movie = Class('http://schema.org/Movie', (owl_NamedIndividual,))
 _schema_CreativeWork = Class('http://schema.org/CreativeWork', (owl_NamedIndividual,))
 _schema_Book = Class('http://schema.org/Book', (owl_NamedIndividual, _schema_CreativeWork))
 
 _individuals = {
-    'Barack Obama': [_schema_Person],
-    'Bob Marley': [_schema_Person],
+    'Barack Obama': [schema_Person],
+    'Bob Marley': [schema_Person],
 }
 
 _object_properties = {
-    'Töchter': _schema_Person
+    'Töchter': schema_Person
 }
 
 _data_properties = {

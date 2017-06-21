@@ -82,6 +82,8 @@ rdf_Property = Class('http://www.w3.org/1999/02/22-rdf-syntax-ns#Property', (owl
 owl_ObjectProperty = Class('http://www.w3.org/2002/07/owl#ObjectProperty', (rdf_Property,))
 owl_DatatypeProperty = Class('http://www.w3.org/2002/07/owl#DatatypeProperty', (rdf_Property,))
 owl_NamedIndividual = Class('http://www.w3.org/2002/07/owl#NamedIndividual', (owl_Thing,))
+schema_Person = Class('http://schema.org/Person', (owl_NamedIndividual,))
+schema_Place = Class('http://schema.org/Place', (owl_NamedIndividual,))
 
 
 class NamedIndividual(Entity):
