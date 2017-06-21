@@ -213,8 +213,10 @@ class GrammaticalAnalyzer:
                 # find properties
                 label_nodes = self._extract_label_nodes_from_node(node, left_child, right_child)
                 nounified_patterns = None
+                expected_type = Type.top()
                 if isinstance(question_word, OpenQuestionWord) and question_word.property_modifiers:
                     nounified_patterns = question_word.property_modifiers
+                    expected_type = question_word.expected_type
 
                 # We iterate on children not used in the predicate
                 # We compute first the list of children to process
@@ -228,15 +230,16 @@ class GrammaticalAnalyzer:
                         break
                     children_to_process.append(child)
 
-                for possible in self._build_tree_with_children(children_to_process, label_nodes):
+                for possible in self._build_tree_with_children(children_to_process, label_nodes, expected_type):
                     possibles |= self._add_data_from_question(possible, question_word)
                 if nounified_patterns is not None:
-                    possibles |= self._build_tree_with_children(children_to_process, label_nodes, nounified_patterns)
+                    possibles |= self._build_tree_with_children(children_to_process, label_nodes, expected_type,
+                                                                nounified_patterns)
 
         return possibles
 
     def _build_tree_with_children(self, children_to_process: Iterable[Token], root_tokens: List[Token],
-                                  nounifier_patterns=None) -> Set[Function]:
+                                  expected_type: Type, nounifier_patterns=None) -> Set[Function]:
         output_variable = self._create_variable('result')
         # We iterate on children not used in the predicate
         # We compute first the list of children to process
@@ -246,19 +249,19 @@ class GrammaticalAnalyzer:
 
             if child.main_ud_dependency <= UDDependency.nsubj or child.main_ud_dependency <= UDDependency.appos:
                 # TODO: relevent for appos?
-                main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=nounifier_patterns)
+                main_relations = self._relations_for_nodes(root_tokens, nounifier_patterns, expected_type)
                 to_intersect_elements.append([function(output_variable) for function in
                                               self._set_argument_to_relations(main_relations, child)])
 
             elif child.main_ud_dependency <= UDDependency.obj:
-                main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=nounifier_patterns)
+                main_relations = self._relations_for_nodes(root_tokens, nounifier_patterns, expected_type)
                 to_intersect_elements.append([function(output_variable) for function in
                                               self._set_argument_to_relations(
                                                   (swap_function_arguments(rel) for rel in main_relations),
                                                   child)])
 
             elif child.main_ud_dependency <= UDDependency.nmod_poss:
-                main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=nounifier_patterns)
+                main_relations = self._relations_for_nodes(root_tokens, nounifier_patterns, expected_type)
                 to_intersect_elements.append([function(output_variable)
                                               for function in self._set_argument_to_relations(main_relations, child)])
 
@@ -278,7 +281,7 @@ class GrammaticalAnalyzer:
                 elif len(cases) < 1:
                     _logger.info('No cases in {}'.format(child))
                     # We assume an "of" TODO: is it smart?
-                    main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=nounifier_patterns)
+                    main_relations = self._relations_for_nodes(root_tokens, nounifier_patterns, expected_type)
                     to_intersect_elements.append([function(output_variable) for function in
                                                   self._set_argument_to_relations(main_relations, child)])
                 else:
@@ -292,7 +295,8 @@ class GrammaticalAnalyzer:
                             if nounifier_patterns is not None:
                                 modifiers = [nounified_pattern.format(modifier)
                                              for nounified_pattern in nounifier_patterns for modifier in modifiers]
-                            main_relations = self._relations_for_nodes(root_tokens, nounified_patterns=modifiers)
+                            main_relations = self._relations_for_nodes(root_tokens, modifiers)
+                            # TODO: expected range (deal with modifiers)
                             relations = [term(relation) for relation in main_relations]
                             results.extend(function(output_variable) for function in
                                            self._set_argument_to_relations(relations, child))
@@ -321,29 +325,32 @@ class GrammaticalAnalyzer:
                 for to_intersect in product(*to_intersect_elements) if to_intersect}
 
     def _set_argument_to_relations(self, relations: Iterable[Function[Function[Formula]]], argument: Token):
-        relations_by_range = defaultdict(list)
+        relations_by_domain = defaultdict(list)
         for relation in relations:
-            relations_by_range[relation.argument_type].append(relation)
+            relations_by_domain[relation.argument_type].append(relation)
 
         results = set()
         variable = self._create_variable('arg')
         result = self._create_variable('result')
-        for range, relations in relations_by_range.items():
+        for domain, relations in relations_by_domain.items():
             results |= {Function(result, ExistsFormula(variable, relation(variable)(result) & arg_relation(variable)))
-                        for relation in relations for arg_relation in self._analyze_tree(argument, range)}
+                        for relation in relations for arg_relation in self._analyze_tree(argument, domain)}
         return results
 
     def _add_data_from_question(self, term: Function, question_word: QuestionWord) -> Set[Function]:
-        if not isinstance(question_word, OpenQuestionWord) or not question_word.expected_properties or \
-                        term.argument_type <= question_word.expected_type:
-            return {term}  # we do not add this triple if the returned type is already the right one
+        if not isinstance(question_word, OpenQuestionWord):
+            return {term}
+        if not question_word.expected_properties or term.argument_type <= Type.from_entity(rdfs_Literal):
+            if term.argument_type & question_word.expected_type == Type.bottom():
+                return set()  # Typing does not works
+            else:
+                return {term}  # the return type is already a literal of the right type or we have no expected property
 
         _logger.info('question word properties {}'.format(question_word.expected_properties))
         relations = list(chain.from_iterable(
             self._knowledge_base.relations_from_label(label, self._language_code)
             for label in question_word.expected_properties
         ))
-        # we do not add this triple if the returned type is already the right one
         result_variable = self._create_variable('result')
         intermediate_variable = self._create_variable('temp')
         return {Function(result_variable, ExistsFormula(intermediate_variable,
@@ -358,15 +365,15 @@ class GrammaticalAnalyzer:
             'individual: {} with result {}'.format(self._nodes_to_string(nodes), [str(i) for i in individuals]))
         return individuals
 
-    def _relations_for_nodes(self, nodes, nounified_patterns=None) -> List[Function]:
+    def _relations_for_nodes(self, nodes, nounified_patterns=None, range: Type = Type.top()) -> List[Function]:
         label = self._nodes_to_string(nodes)
-        relations = self._find_relations_with_pattern(label, nounified_patterns)
+        relations = self._find_relations_with_pattern(label, nounified_patterns, range)
         if not relations and len(nodes) == 1:
             # lemmatization
             if self._language_code in _wordnet_hardcoded:
                 for (pattern, noun) in _wordnet_hardcoded[self._language_code]:
                     if pattern.match(label):
-                        relations = self._find_relations_with_pattern(noun, nounified_patterns)
+                        relations = self._find_relations_with_pattern(noun, nounified_patterns, range)
 
         """TODO: enable again?
         if self._language_code in _wordnet_language_codes and nodes[0].ud_pos in _wordnet_pos_tags:
@@ -386,11 +393,11 @@ class GrammaticalAnalyzer:
         """
 
         _logger.info(
-            'relations: {} and nounifiers {} with result {} '.format(
-                label, nounified_patterns, [str(p) for p in relations]))
+            'relation "{}" with nounifiers {} and range {} give a result result {} '.format(
+                label, nounified_patterns, range, [str(p) for p in relations]))
         return list(set(relations))
 
-    def _find_relations_with_pattern(self, label, nounified_patterns):
+    def _find_relations_with_pattern(self, label, nounified_patterns, range: Type):
         if nounified_patterns is None:
             nounified_patterns = ('{}',)
         return self._knowledge_base.relations_from_labels(

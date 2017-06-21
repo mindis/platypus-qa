@@ -24,10 +24,6 @@ from flask import redirect
 from flask.json import jsonify
 from flask_cors import CORS
 from flask_swaggerui import build_static_blueprint, render_swaggerui
-from ppp_datamodel import Request
-from ppp_datamodel.exceptions import AttributeNotProvided
-from werkzeug.exceptions import BadRequest
-
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
@@ -36,6 +32,9 @@ from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
     DisambiguatedWikidataSparqlHandler, RequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
+from ppp_datamodel import Request
+from ppp_datamodel.exceptions import AttributeNotProvided
+from werkzeug.exceptions import BadRequest
 
 logging.basicConfig(level=logging.INFO)
 

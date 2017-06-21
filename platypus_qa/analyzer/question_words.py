@@ -21,7 +21,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional
 
 from platypus_qa.database.formula import Type
-from platypus_qa.database.owl import platypus_calendar
+from platypus_qa.database.owl import platypus_calendar, schema_Person, schema_Place, geo_wktLiteral, xsd_decimal, \
+    xsd_float, xsd_double
 
 
 class QuestionWord:
@@ -33,7 +34,7 @@ class QuestionWord:
 
 
 class OpenQuestionWord(QuestionWord):
-    def __init__(self, words: str, expected_type: Type = Type.bottom(), expected_properties=(),
+    def __init__(self, words: str, expected_type: Type = Type.top(), expected_properties=(),
                  property_modifiers=('{}',)):
         """
         :param words: The question words
@@ -55,26 +56,31 @@ class ExistsQuestionWord(QuestionWord):
     pass
 
 
-_time_types = ['xsd:dateTime', 'xsd:date', 'xsd:gMonthYear', 'xsd:gYear', 'xsd:time', 'xsd:gMonthDay', 'xsd:gMonth',
-               'xsd:gDay']
-_où = OpenQuestionWord('où', expected_properties=['localisation', 'lieu'], property_modifiers=['lieu de {}'])
-# TODO expected_type=['Place', 'GeoCoordinates']
+place_type = Type.from_entity(schema_Place) | Type.from_entity(geo_wktLiteral)
+time_type = Type.from_entity(platypus_calendar)
+person_type = Type.from_entity(schema_Person)
+quantity_type = Type.from_entity(xsd_decimal) | Type.from_entity(xsd_float) | Type.from_entity(xsd_double)
+_où = OpenQuestionWord('où', expected_properties=['localisation', 'lieu'], property_modifiers=['lieu de {}'],
+                       expected_type=place_type)
 _quand = OpenQuestionWord('quand', expected_properties=['date', 'heure'],
                           property_modifiers=['date de {}', 'heure de {}', 'année de {}'],
-                          expected_type=Type.from_entity(platypus_calendar))
+                          expected_type=time_type)
 _dónde = OpenQuestionWord('dónde',
                           expected_properties=['localización', 'lugar', 'sitio', 'plaza', 'posición', 'ubicación',
                                                'coordenadas', 'país'],
-                          property_modifiers=['lugar de {}'])
+                          property_modifiers=['lugar de {}'],
+                          expected_type=place_type)
 _cuándo = OpenQuestionWord('cuándo', expected_properties=['fecha', 'hora'],
                            property_modifiers=['fecha de {}', 'hora de {}', 'año de {}'],
-                           expected_type=Type.from_entity(platypus_calendar))
+                           expected_type=time_type)
 _question_words = {
     'de': {
-        'wer': OpenQuestionWord('wer'),
+        'wer': OpenQuestionWord('wer', expected_type=person_type),
         'was': OpenQuestionWord('was'),
-        'wann': OpenQuestionWord('wann', expected_properties=['Datum', 'Stunde'], property_modifiers=['{}datum']),
-        'wo': OpenQuestionWord('wo', expected_properties=['Lage', 'Ort', 'Platz'], property_modifiers=['{}ort']),
+        'wann': OpenQuestionWord('wann', expected_properties=['Datum', 'Stunde'], property_modifiers=['{}datum'],
+                                 expected_type=time_type),
+        'wo': OpenQuestionWord('wo', expected_properties=['Lage', 'Ort', 'Platz'], property_modifiers=['{}ort'],
+                               expected_type=place_type),
         'wen': OpenQuestionWord('wen'),
         'wem': OpenQuestionWord('wem'),
         'wieso': OpenQuestionWord('wieso'),  # TODO
@@ -92,31 +98,42 @@ _question_words = {
         'what kind': OpenQuestionWord('what kind'),
         'what type': OpenQuestionWord('what type', expected_properties=['type', 'sort']),
         'what sort': OpenQuestionWord('what sort', expected_properties=['type', 'sort']),
-        'what time': OpenQuestionWord('what time', expected_properties=['time'], property_modifiers=['{} time']),
+        'what time': OpenQuestionWord('what time', expected_properties=['time'], property_modifiers=['{} time'],
+                                      expected_type=time_type),
         'when': OpenQuestionWord('when', expected_properties=['date', 'time'],
                                  property_modifiers=['{} date', '{} time'],
-                                 expected_type=Type.from_entity(platypus_calendar)),
+                                 expected_type=time_type),
         'why': OpenQuestionWord('why', expected_properties=['reason', 'cause', 'origin'],
                                 property_modifiers=['{} reason', '{} cause', '{} origin']),
         'where': OpenQuestionWord('where', expected_properties=['location', 'place', 'city', 'locality'],
-                                  property_modifiers=['{} place', '{} location', '{} city']),
-        'who': OpenQuestionWord('who'),
+                                  property_modifiers=['{} place', '{} location', '{} city'],
+                                  expected_type=place_type),
+        'who': OpenQuestionWord('who', expected_type=person_type),
         'how': OpenQuestionWord('how', expected_properties=['manner'], property_modifiers=['{} manner']),
         'how much': OpenQuestionWord('how much', expected_properties=['amount', 'quantity', 'number'],
-                                     property_modifiers=['{} amount', '{} quantity', '{} number']),
+                                     property_modifiers=['{} amount', '{} quantity', '{} number'],
+                                     expected_type=quantity_type),
         'how many': OpenQuestionWord('how many', expected_properties=['amount', 'quantity', 'number'],
-                                     property_modifiers=['{} amount', '{} quantity', '{} number']),
+                                     property_modifiers=['{} amount', '{} quantity', '{} number'],
+                                     expected_type=quantity_type),
         'how old': OpenQuestionWord('how old', expected_properties=['age'], property_modifiers=['{} age']),
-        'how far': OpenQuestionWord('how far', expected_properties=['distance'], property_modifiers=['{} distance']),
+        'how far': OpenQuestionWord('how far', expected_properties=['distance'], property_modifiers=['{} distance'],
+                                    expected_type=quantity_type),
         'how long': OpenQuestionWord('how long', expected_properties=['length', 'duration'],
-                                     property_modifiers=['{} length', '{} duration']),
-        'how tall': OpenQuestionWord('how tall', expected_properties=['height'], property_modifiers=['{} height']),
-        'how deep': OpenQuestionWord('how deep', expected_properties=['depth'], property_modifiers=['{} depth']),
-        'how wide': OpenQuestionWord('how wide', expected_properties=['width'], property_modifiers=['{} width']),
+                                     property_modifiers=['{} length', '{} duration'],
+                                     expected_type=quantity_type),
+        'how tall': OpenQuestionWord('how tall', expected_properties=['height'], property_modifiers=['{} height'],
+                                     expected_type=quantity_type),
+        'how deep': OpenQuestionWord('how deep', expected_properties=['depth'], property_modifiers=['{} depth'],
+                                     expected_type=quantity_type),
+        'how wide': OpenQuestionWord('how wide', expected_properties=['width'], property_modifiers=['{} width'],
+                                     expected_type=quantity_type),
         'how fast': OpenQuestionWord('how fast', expected_properties=['speed', 'velocity'],
-                                     property_modifiers=['{} speed', '{} velocity']),
+                                     property_modifiers=['{} speed', '{} velocity'],
+                                     expected_type=quantity_type),
         'how often': OpenQuestionWord('how often', expected_properties=['frequency'],
-                                      property_modifiers=['{} frequency']),
+                                      property_modifiers=['{} frequency'],
+                                      expected_type=quantity_type),
         'how come': OpenQuestionWord('how come', expected_properties=['reason'], property_modifiers=['{} reason']),
         'which': OpenQuestionWord('which'),
         'whom': OpenQuestionWord('whom'),
@@ -124,10 +141,12 @@ _question_words = {
         'how big': OpenQuestionWord('how big', expected_properties=['size'], property_modifiers=['{} size']),
         'of which': OpenQuestionWord('of which'),
         'in which': OpenQuestionWord('in which', expected_properties=['location', 'place', 'city', 'locality'],
-                                     property_modifiers=['{} place', '{} location', '{} city']),
+                                     property_modifiers=['{} place', '{} location', '{} city'],
+                                     expected_type=place_type),
         'from which': OpenQuestionWord('from which',
                                        expected_properties=['place', 'location', 'residence', 'origin', 'citizenship',
-                                                            'nationality', 'country of citizenship', 'country', 'city'])
+                                                            'nationality', 'country of citizenship', 'country', 'city'],
+                                       expected_type=place_type)
     },
     'es': {
         'cómo': OpenQuestionWord('cómo'),
@@ -152,17 +171,17 @@ _question_words = {
         'por que': OpenQuestionWord('por qué', expected_properties=['causa', 'razón']),
         'qué': OpenQuestionWord('qué'),
         'que': OpenQuestionWord('qué'),
-        'quién': OpenQuestionWord('quién'),  # TODO: expected_types=['Person']
-        'quien': OpenQuestionWord('quién'),  # TODO: expected_types=['Person']
-        'quiénes': OpenQuestionWord('quiénes'),  # TODO: expected_types=['Person']
-        'quienes': OpenQuestionWord('quiénes'),  # TODO: expected_types=['Person']
+        'quién': OpenQuestionWord('quién', expected_type=person_type),
+        'quien': OpenQuestionWord('quién', expected_type=person_type),
+        'quiénes': OpenQuestionWord('quiénes', expected_type=person_type),
+        'quienes': OpenQuestionWord('quiénes', expected_type=person_type),
     },
     'fr': {
         'a quoi': OpenQuestionWord('à quoi'),
         'à quoi': OpenQuestionWord('à quoi'),
         'comment': OpenQuestionWord('comment', property_modifiers=(
             'circonstance de {}', 'circonstance du {}', 'cause de {}', 'cause {}', '{} car', '{} à cause de')),
-        'combien': OpenQuestionWord('combien'),
+        'combien': OpenQuestionWord('combien', expected_type=quantity_type),
         'de quoi': OpenQuestionWord('de quoi'),
         'donne': OpenQuestionWord('donne'),
         'donne moi': OpenQuestionWord('donne moi'),
@@ -183,7 +202,7 @@ _question_words = {
         'quelle': OpenQuestionWord('quel'),
         'quelles': OpenQuestionWord('quel'),
         'quels': OpenQuestionWord('quel'),
-        'qui': OpenQuestionWord('qui'),  # TODO: expected_types=['Person']
+        'qui': OpenQuestionWord('qui', expected_type=person_type),
         'quoi': OpenQuestionWord('quoi')
     }
 }
