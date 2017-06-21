@@ -18,10 +18,10 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-import itertools
 import logging
 import re
 from collections import defaultdict
+from itertools import chain, product
 from typing import List, Iterable, Set
 
 from nltk.corpus import wordnet
@@ -165,7 +165,7 @@ class GrammaticalAnalyzer:
                 children_to_parse = self._filter_not_main_dependencies(node.children)
                 if len(children_to_parse) != 1:
                     return set()  # TODO: what should we do?
-                return set(itertools.chain.from_iterable(
+                return set(chain.from_iterable(
                     self._add_data_from_question(node, question_word)
                     for node in self._analyze_tree(children_to_parse[0])))
 
@@ -192,14 +192,14 @@ class GrammaticalAnalyzer:
         if (self._language_code in _meaningless_roots or question_word and not left_children_to_parse) and \
                         node.word.lower() in _meaningless_roots[self._language_code] and \
                         len(children_to_parse) == 1:
-            return set(itertools.chain.from_iterable(
+            return set(chain.from_iterable(
                 self._add_data_from_question(node, question_word) for node in self._analyze_tree(children_to_parse[0])))
 
         # It is just en entity
-        individuals = self._individuals_for_nodes(self._trim(list(itertools.chain(
-            itertools.chain.from_iterable(child.subtree for child in left_children_to_parse),
+        individuals = self._individuals_for_nodes(self._trim(list(chain(
+            chain.from_iterable(child.subtree for child in left_children_to_parse),
             [node],
-            itertools.chain.from_iterable(child.subtree for child in node.right_children)
+            chain.from_iterable(child.subtree for child in node.right_children)
         ))))
         for individual in individuals:
             possibles |= self._add_data_from_question(individual, question_word)
@@ -320,7 +320,7 @@ class GrammaticalAnalyzer:
                 return set()
 
         return {Function(output_variable, AndFormula(to_intersect))
-                for to_intersect in itertools.product(*to_intersect_elements) if to_intersect}
+                for to_intersect in product(*to_intersect_elements) if to_intersect}
 
     def _set_argument_to_relations(self, relations: Iterable[Function[Function[Formula]]], argument: Token):
         relations_by_range = defaultdict(list)
@@ -341,7 +341,7 @@ class GrammaticalAnalyzer:
             return {term}  # we do not add this triple if the returned type is already the right one
 
         _logger.info('question word properties {}'.format(question_word.expected_properties))
-        relations = list(itertools.chain.from_iterable(
+        relations = list(chain.from_iterable(
             self._knowledge_base.relations_from_label(label, self._language_code)
             for label in question_word.expected_properties
         ))
@@ -354,34 +354,21 @@ class GrammaticalAnalyzer:
                 for relation in relations}
 
     def _individuals_for_nodes(self, nodes, type_filter: Class = owl_Thing) -> List[Function[Formula]]:
-        individuals = self.entities_for_nodes(nodes,
-                                              lambda label, language_code: self._knowledge_base.individuals_from_label(
-                                                  label, language_code, type_filter))
+        individuals = self._knowledge_base.individuals_from_label(
+            self._nodes_to_string(nodes), self._language_code, type_filter)
         _logger.info(
             'individual: {} with result {}'.format(self._nodes_to_string(nodes), [str(i) for i in individuals]))
         return individuals
 
     def _relations_for_nodes(self, nodes, nounified_patterns=None) -> List[Function]:
-        properties = self.entities_for_nodes(nodes,
-                                             lambda label, language_code: self._knowledge_base.relations_from_label(
-                                                 label, language_code), nounified_patterns=nounified_patterns)
-        _logger.info(
-            'properties: {} and nounifiers {} with result {} '.format(self._nodes_to_string(nodes), nounified_patterns,
-                                                                      [str(p) for p in properties]))
-        return properties
-
-    def entities_for_nodes(self, nodes, entity_lookup, nounified_patterns=None):
-        entities = self._find_entities_with_pattern(self._nodes_to_string(nodes), entity_lookup, nounified_patterns,
-                                                    self._language_code)
-        if entities or len(nodes) != 1:
-            return list(set(entities))
-
-        # lemmatization
-        if self._language_code in _wordnet_hardcoded:
-            for (pattern, noun) in _wordnet_hardcoded[self._language_code]:
-                if pattern.match(nodes[0].word):
-                    return list(set(
-                        self._find_entities_with_pattern(noun, entity_lookup, nounified_patterns, self._language_code)))
+        label = self._nodes_to_string(nodes)
+        relations = self._find_relations_with_pattern(label, nounified_patterns)
+        if not relations and len(nodes) == 1:
+            # lemmatization
+            if self._language_code in _wordnet_hardcoded:
+                for (pattern, noun) in _wordnet_hardcoded[self._language_code]:
+                    if pattern.match(label):
+                        relations = self._find_relations_with_pattern(noun, nounified_patterns)
 
         """TODO: enable again?
         if self._language_code in _wordnet_language_codes and nodes[0].ud_pos in _wordnet_pos_tags:
@@ -389,18 +376,28 @@ class GrammaticalAnalyzer:
                 synsets = wordnet.synsets(nodes[0].word, pos=_wordnet_pos_tags[nodes[0].ud_pos],
                                           lang=_wordnet_language_codes[self._language_code])
                 nouns = self._nouns_for_synsets(synsets, self._language_code)
-                entities = list(itertools.chain.from_iterable(
+                entities = list(chain.from_iterable(
                     self._find_entities_with_pattern(noun, entity_lookup, nounified_patterns, self._language_code)
                     for noun in nouns))
                 if not entities and '{}' in nounified_patterns:
                     # try in english
-                    entities = list(itertools.chain.from_iterable(
+                    entities = list(chain.from_iterable(
                         entity_lookup(noun, 'en') for noun in self._nouns_for_synsets(synsets, 'en')))
             except Exception as e:
                 logging.getLogger('wornet').warn(e, exc_info=True)
         """
 
-        return list(set(entities))
+        _logger.info(
+            'relations: {} and nounifiers {} with result {} '.format(
+                label, nounified_patterns, [str(p) for p in relations]))
+        return list(set(relations))
+
+    def _find_relations_with_pattern(self, label, nounified_patterns):
+        if nounified_patterns is None:
+            nounified_patterns = ('{}',)
+        return list(chain.from_iterable(
+            self._knowledge_base.relations_from_label(nounified_pattern.format(label), self._language_code)
+            for nounified_pattern in nounified_patterns))
 
     def _literals_for_node(self, nodes, expected_type: Type):
         input_str = self._nodes_to_string(nodes)
@@ -412,20 +409,13 @@ class GrammaticalAnalyzer:
         return {Function(variable, EqualityFormula(variable, ValueFormula(literal, input_str))) for literal in literals}
 
     @staticmethod
-    def _find_entities_with_pattern(label, entity_lookup, nounified_patterns, language_code):
-        if nounified_patterns is None:
-            nounified_patterns = ('{}',)
-        return list(itertools.chain.from_iterable(entity_lookup(nounified_pattern.format(label), language_code) for
-                                                  nounified_pattern in nounified_patterns))
-
-    @staticmethod
     def _nouns_for_synsets(synsets, language_code: str):
         lemmas = list(
-            itertools.chain.from_iterable(synset.lemmas(_wordnet_language_codes[language_code]) for synset in synsets))
+            chain.from_iterable(synset.lemmas(_wordnet_language_codes[language_code]) for synset in synsets))
         derivationally_related_forms = list(
-            itertools.chain(itertools.chain.from_iterable(x.derivationally_related_forms() for x in lemmas), lemmas))
+            chain(chain.from_iterable(x.derivationally_related_forms() for x in lemmas), lemmas))
         related_synsets = [lemma.synset() for lemma in derivationally_related_forms]
-        return list(itertools.chain.from_iterable(
+        return list(chain.from_iterable(
             synset.lemma_names(_wordnet_language_codes[language_code]) for synset in related_synsets if
             synset.pos() == wordnet.NOUN)
         )
