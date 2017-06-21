@@ -19,10 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
-import time
 import unittest
-
-from ppp_datamodel import Sentence, Resource, List, Request
 
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger
@@ -30,6 +27,7 @@ from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
 from platypus_qa.request_handler import PPPRequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
+from ppp_datamodel import Sentence, Resource, List, Request
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -64,7 +62,6 @@ class RequestHandlerTest(unittest.TestCase):
                     _logger.warning('[ppp_module_test] No resources found for the {} question {}.\nReturned results: {}'
                                     .format(language_code, question, results))
                     bad_count += 1
-                time.sleep(5)  # to don't overload servers
         if bad_count > 0:
             raise AssertionError(
                 '{} on {} tests failed'.format(bad_count,
