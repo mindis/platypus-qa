@@ -215,7 +215,6 @@ class GrammaticalAnalyzer:
                 nounified_patterns = None
                 if isinstance(question_word, OpenQuestionWord) and question_word.property_modifiers:
                     nounified_patterns = question_word.property_modifiers
-                relations = self._relations_for_nodes(label_nodes)
 
                 # We iterate on children not used in the predicate
                 # We compute first the list of children to process
@@ -229,9 +228,8 @@ class GrammaticalAnalyzer:
                         break
                     children_to_process.append(child)
 
-                if relations:
-                    for possible in self._build_tree_with_children(children_to_process, label_nodes):
-                        possibles |= self._add_data_from_question(possible, question_word)
+                for possible in self._build_tree_with_children(children_to_process, label_nodes):
+                    possibles |= self._add_data_from_question(possible, question_word)
                 if nounified_patterns is not None:
                     possibles |= self._build_tree_with_children(children_to_process, label_nodes, nounified_patterns)
 
