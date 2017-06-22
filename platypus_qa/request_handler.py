@@ -30,6 +30,12 @@ import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
+from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
+from ppp_datamodel.communication import TraceItem, Response
+from pyld import jsonld
+from sympy import latex
+from werkzeug.exceptions import NotFound
+
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term, ValueFormula
@@ -39,11 +45,6 @@ from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPD
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.model import NLPParser
-from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
-from ppp_datamodel.communication import TraceItem, Response
-from pyld import jsonld
-from sympy import latex
-from werkzeug.exceptions import NotFound
 
 _logger = logging.getLogger('request_handler')
 
@@ -60,6 +61,7 @@ _platypus_context = {
     'xsd': 'http://www.w3.org/2001/XMLSchema#',
     'resultScore': 'goog:resultScore',
     'totalItems': 'hydra:totalItems',
+    'member': 'hydra:member',
     'platypus:term': {
         '@type': 'xsd:string'
     }
