@@ -24,17 +24,14 @@ from flask import redirect
 from flask.json import jsonify
 from flask_cors import CORS
 from flask_swaggerui import build_static_blueprint, render_swaggerui
+
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger, JsonFileDictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.spacy import SpacyParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
-from platypus_qa.request_handler import PPPRequestHandler, SimpleWikidataSparqlHandler, \
-    DisambiguatedWikidataSparqlHandler, RequestHandler
+from platypus_qa.request_handler import SimpleWikidataSparqlHandler, DisambiguatedWikidataSparqlHandler, RequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
-from ppp_datamodel import Request
-from ppp_datamodel.exceptions import AttributeNotProvided
-from werkzeug.exceptions import BadRequest
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,30 +53,21 @@ _compacted_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BA
 _wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=False)
 _simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(_parsers, _wikidata_kb)
 _disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(_parsers, _wikidata_kb)
-_ppp_request_handler = PPPRequestHandler(_parsers, _compacted_wikidata_kb, _request_logger)
 _request_handler = RequestHandler(_parsers, _compacted_wikidata_kb, _request_logger)
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def root():
-    if request.method == 'GET':
-        return redirect('/v0')
-
-    try:
-        ppp_request = Request.from_dict(request.get_json(force=True))
-    except ValueError:
-        raise BadRequest('Data is not valid JSON.')
-    except KeyError:
-        raise BadRequest('Missing mandatory field in request object.')
-    except AttributeNotProvided as exc:
-        raise BadRequest('Attribute not provided: %s.' % exc.args[0])
-
-    return jsonify([x.as_dict() for x in _ppp_request_handler.answer(ppp_request)])
+    return redirect('/v0')
 
 
 @app.route('/v0/ask', methods=['GET'])
 def ask():
-    return _request_handler.ask()
+    return _request_handler.ask(
+        request.args['q'],
+        request.args.get('lang', 'und'),
+        str(request.accept_languages)
+    )
 
 
 @app.route('/v0/samples', methods=['GET'])

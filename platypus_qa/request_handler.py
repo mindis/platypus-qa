@@ -21,17 +21,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 import signal
 import time
-import typing
 from concurrent.futures import Future, TimeoutError
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Iterable, Dict
+from typing import Union, Iterable, Dict, List, Optional
 
 import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
-from ppp_datamodel import Sentence, List, Resource, MathLatexResource, Request
-from ppp_datamodel.communication import TraceItem, Response
 from pyld import jsonld
 from sympy import latex
 from werkzeug.exceptions import NotFound
@@ -41,7 +38,6 @@ from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term, ValueFormula
 from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import Entity, Literal
-from platypus_qa.database.ppp_datamodel import ToPPPDataModelConverter, FromPPPDataModelConverter, PlatypusResource
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
 from platypus_qa.nlp.model import NLPParser
@@ -133,7 +129,7 @@ class LazyThreadPoolExecutor(ThreadPoolExecutor):
         return False
 
 
-def _first_future_with_cond(futures: typing.List[Future], condition, default, timeout=None):
+def _first_future_with_cond(futures: List[Future], condition, default, timeout=None):
     for future in futures:
         try:
             result = future.result(timeout)
@@ -147,185 +143,16 @@ def _first_future_with_cond(futures: typing.List[Future], condition, default, ti
     return default
 
 
-class PPPRequestHandler:
-    def __init__(self, parsers: typing.List[NLPParser], knowledge_base: KnowledgeBase, request_logger: DictLogger):
-        self._parsers = parsers
-        self._knowledge_base = knowledge_base
-        self._request_logger = request_logger
-        self._to_ppp_datamodel_converter = ToPPPDataModelConverter()
-
-    def _find_language(self):
-        if self._request.language == 'und' and isinstance(self._request.tree, Sentence):
-            return langdetect.detect(self._request.tree.value)  # TODO: more clever + other than Sentence?
-        return self._request.language
-
-    def answer(self, request: Request):
-        timestamp = time.time()
-        self._request = request
-        self._language = self._find_language()
-
-        results = self._do_simple_execute()
-        if not self._has_resource(results):
-            results = self._do_cas()
-        for parser in self._parsers:
-            if not self._has_resource(results):
-                results = self._do_with_grammatical_analysis(parser)
-
-        if isinstance(self._request.tree, Sentence):
-            self._request_logger.log({
-                'question': self._request.tree.value,
-                'language': self._language,
-                'with_results': self._has_resource(results),
-                'timestamp': timestamp,
-                'answer_time': time.time() - timestamp
-            })
-
-        return results
-
-    @_safe_limited_response_builder(PROCESSING_TIMEOUT)
-    def _do_with_grammatical_analysis(self, parser: NLPParser):
-        if self._language not in parser.supported_languages:
-            return []
-        tree = self._request.tree
-        if not isinstance(tree, Sentence):
-            return []
-        return self._do_with_terms(
-            GrammaticalAnalyzer(parser, self._knowledge_base, self._language).analyze(tree.value),
-            parser.__class__.__name__
-        )
-
-    @_safe_limited_response_builder(5)
-    def _do_simple_execute(self):
-        tree = self._request.tree
-        if isinstance(tree, Sentence):
-            return []
-        return self._do_with_terms(
-            FromPPPDataModelConverter(self._knowledge_base, 'en').node_to_terms(tree),
-            'Input'
-        )
-
-    def _do_with_terms(self, parsed_terms: Iterable[Term], parser_name):
-        parsed_terms = list(sorted(parsed_terms, key=lambda term: -term.score))
-        results = []
-        for term in parsed_terms:
-            try:
-                tree = self._to_ppp_datamodel_converter.term_to_node(term)
-                if not isinstance(tree, (Resource, List)):
-                    measures = {'accuracy': 0.5, 'relevance': term.score / 100}  # TODO: is good constant?
-                    results.append(Response(
-                        self._language, tree, measures,
-                        self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures)]
-                    ))
-            except ValueError:
-                continue  # Ignore trees we are not able to serialize
-
-        with LazyThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(self._knowledge_base.evaluate_term, term) for term in parsed_terms]
-            results = []
-            max_score = 0
-            for i in range(len(parsed_terms)):
-                term = parsed_terms[i]
-                if term.score < max_score:
-                    return results
-
-                result = futures[i].result()
-                if result:
-                    max_score = term.score
-                    values = List(
-                        list=[value for value in executor.map(self._format_value, result) if
-                              value is not None])
-                    measures = {'accuracy': 0.5, 'relevance': term.score / 100}  # TODO: is good constant?
-                    try:
-                        tree = self._to_ppp_datamodel_converter.term_to_node(term)
-                        results.append(Response(
-                            self._language, values, measures,
-                            self._request.trace + [TraceItem('PPP-Platypus-QA+{}'.format(parser_name), tree, measures),
-                                                   TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values,
-                                                             measures)]
-                        ))
-                    except ValueError:
-                        results.append(Response(
-                            self._language, values, measures,
-                            self._request.trace + [
-                                TraceItem('PPP-Platypus-QA+{}+Wikidata'.format(parser_name), values, measures)]
-                        ))
-            return results
-
-    @_safe_limited_response_builder(5)
-    def _do_cas(self):
-        tree = self._request.tree
-        if not isinstance(tree, Sentence):
-            return []
-
-        math_notation = is_math(tree.value)
-        if math_notation == IsMath.No:
-            return []
-
-        calchas_tree = parse_mathematica(tree.value)
-        if calchas_tree is None:
-            calchas_tree = parse_natural(tree.value)
-        if calchas_tree is None:
-            calchas_tree = parse_latex(tree.value)
-        if calchas_tree is None:
-            return []
-
-        sympy_tree = Translator().to_sympy_tree(calchas_tree)
-        output_string = str(sympy_tree)
-        output_latex = latex(sympy_tree)
-
-        if not is_interesting(str(tree.value), output_string) and math_notation == IsMath.Maybe:
-            return []
-        if len(output_latex) > 1 and output_latex.isalpha():
-            return []
-
-        output_tree = MathLatexResource(output_string, latex=output_latex)
-        measures = {
-            'accuracy': 1,
-            'relevance': relevance(tree.value, output_string)
-        }
-        trace = self._request.trace + [TraceItem('CAS', output_tree, measures)]
-        return [Response(self._request.response_language, output_tree, measures, trace)]
-
-    @staticmethod
-    def _has_resource(results) -> bool:
-        for result in results:
-            if isinstance(result.tree, (Resource, List)):
-                return True
-        return False
-
-    def _format_value(self, value: Union[Entity, Literal]) -> typing.Optional[Resource]:
-        try:
-            return self._json_ld_to_resource(self._knowledge_base.format_value(value, self._request.response_language))
-        except ValueError as e:
-            _logger.warning(e)
-            return None
-
-    @staticmethod
-    def _json_ld_to_resource(json_ld):
-        if json_ld is None:
-            return None
-        if 'name' in json_ld:
-            return PlatypusResource(value=str(json_ld['name']), graph=json_ld)
-        elif 'http://www.w3.org/1999/02/22-rdf-syntax-ns#value' in json_ld and \
-                        '@value' in json_ld['http://www.w3.org/1999/02/22-rdf-syntax-ns#value']:
-            return PlatypusResource(value=json_ld['http://www.w3.org/1999/02/22-rdf-syntax-ns#value']['@value'],
-                                    graph=json_ld)
-        elif '@id' in json_ld:
-            return PlatypusResource(value=json_ld['@id'], graph=json_ld)
-        else:
-            return PlatypusResource(value='', graph=json_ld)
-
-
 class RequestHandler:
-    def __init__(self, parsers: typing.List[NLPParser], knowledge_base: KnowledgeBase, request_logger: DictLogger):
+    def __init__(self, parsers: List[NLPParser], knowledge_base: KnowledgeBase, request_logger: DictLogger):
         self._parsers = parsers
         self._knowledge_base = knowledge_base
         self._request_logger = request_logger
 
-    def ask(self):
-        self._question = request.args['q']
-        self._question_language_code = self._clean_language_code(request.args.get('lang', 'und'), self._question)
-        self._accept_languages = str(request.accept_languages)
+    def ask(self, question: str, lang: str, accept_language: Optional[str]):
+        self._question = question
+        self._question_language_code = self._clean_language_code(lang, self._question)
+        self._accept_languages = accept_language
 
         timestamp = time.time()
 
@@ -420,14 +247,7 @@ class RequestHandler:
             'resultScore': relevance(self._question, output_string)
         }]
 
-    @staticmethod
-    def _has_resource(results) -> bool:
-        for result in results:
-            if isinstance(result.tree, (Resource, List)):
-                return True
-        return False
-
-    def _format_value(self, value: Union[Entity, Literal]) -> typing.Optional[Dict]:
+    def _format_value(self, value: Union[Entity, Literal]) -> Optional[Dict]:
         try:
             return self._knowledge_base.format_value(value, self._accept_languages)
         except ValueError as e:
@@ -436,7 +256,7 @@ class RequestHandler:
 
 
 class _BaseWikidataSparqlHandler:
-    def __init__(self, parsers: typing.List[NLPParser], wikidata_kb: WikidataKnowledgeBase):
+    def __init__(self, parsers: List[NLPParser], wikidata_kb: WikidataKnowledgeBase):
         self._parsers = parsers
         self._wikidata_kb = wikidata_kb
 
