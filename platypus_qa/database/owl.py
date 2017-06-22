@@ -305,11 +305,11 @@ class XSDAnyURILiteral(Literal):
 
 class XSDBooleanLiteral(Literal):
     def __init__(self, value: bool):
-        self._value = value
+        self.value = value
 
     @property
     def lexical_form(self) -> str:
-        return 'true' if self._value else 'false'
+        return 'true' if self.value else 'false'
 
     @property
     def datatype(self) -> Datatype:
@@ -395,20 +395,16 @@ class XSDDateLiteral(Literal):
 
 class XSDDecimalLiteral(Literal):
     def __init__(self, value: Decimal):
-        self._value = value.normalize()
+        self.value = value.normalize()
 
     @property
     def lexical_form(self) -> str:
-        form = str(self._value)
+        form = str(self.value)
         return form if '.' in form else form + '.'
 
     @property
     def datatype(self) -> Datatype:
         return xsd_decimal
-
-    @property
-    def value(self) -> Decimal:
-        return self._value
 
     def __str__(self) -> str:
         return self.lexical_form
@@ -416,36 +412,28 @@ class XSDDecimalLiteral(Literal):
 
 class XSDDoubleLiteral(Literal):
     def __init__(self, value: float):
-        self._value = value
+        self.value = value
 
     @property
     def lexical_form(self) -> str:
-        return str(self._value)
+        return str(self.value)
 
     @property
     def datatype(self) -> Datatype:
         return xsd_double
 
-    @property
-    def value(self) -> float:
-        return self._value
-
 
 class XSDFloatLiteral(Literal):
     def __init__(self, value: float):
-        self._value = value
+        self.value = value
 
     @property
     def lexical_form(self) -> str:
-        return str(self._value)
+        return str(self.value)
 
     @property
     def datatype(self) -> Datatype:
         return xsd_float
-
-    @property
-    def value(self) -> float:
-        return self._value
 
 
 class XSDGYearMonthLiteral(Literal):
@@ -485,19 +473,15 @@ class XSDGYearLiteral(Literal):
 
 class XSDIntegerLiteral(Literal):
     def __init__(self, value: int):
-        self._value = value
+        self.value = value
 
     @property
     def lexical_form(self) -> str:
-        return str(self._value)
+        return str(self.value)
 
     @property
     def datatype(self) -> Datatype:
         return xsd_integer
-
-    @property
-    def value(self) -> int:
-        return self._value
 
     def __str__(self) -> str:
         return self.lexical_form

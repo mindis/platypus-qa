@@ -25,8 +25,8 @@ from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
+from platypus_qa.request_handler import RequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
-from request_handler import RequestHandler
 
 logging.basicConfig(level=logging.WARNING)
 
