@@ -34,7 +34,7 @@ from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, 
     BinaryArithmeticOperatorFormula, Type
 from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
-    XSDBooleanLiteral, XSDAnyURILiteral, RDFLangStringLiteral, XSDStringLiteral, XSDDateTimeLiteral, \
+    XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, \
     XSDDateLiteral, XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
     xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean, \
     xsd_integer, Datatype, Property
@@ -572,35 +572,27 @@ class WikidataKnowledgeBase(KnowledgeBase):
             else:
                 return XSDAnyURILiteral(term['value'])
         elif term['type'] == 'literal':
-            if 'xml:lang' in term:
-                return RDFLangStringLiteral(term['value'], term['xml:lang'])
-            elif 'datatype' in term:
-                if term['datatype'] == 'http://www.w3.org/2001/XMLSchema#dateTime':
-                    return WikidataKnowledgeBase._format_wdqs_time(term['value'])
-                else:
-                    return build_literal(term['value'],
-                                         _wikibase_datatype_registry[term['datatype']])  # TODO: find datatype
-            else:
-                return XSDStringLiteral(term['value'])
+            literal = build_literal(term['value'], term.get('datatype', None), term.get('xml:lang', None))
+            if isinstance(literal, XSDDateTimeLiteral):
+                literal = WikidataKnowledgeBase._clean_wdqs_datetime(literal)
+            return literal
         elif term['type'] == 'bnode':
             return None
         else:
             raise ValueError('Unsupported term in SPARQL results serialization {}'.format(term))
 
     @staticmethod
-    def _format_wdqs_time(time):
-        # TODO: very hacky
-        date_time = re.match(r'([+-]?\d{2,})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z', time)
-        if not date_time or date_time.group(4) != '00' or date_time.group(5) != 0 or date_time.group(6) != 0:
-            return XSDDateTimeLiteral(
-                int(date_time.group(1)), int(date_time.group(2)), int(date_time.group(3)),
-                int(date_time.group(4)), int(date_time.group(5)), int(date_time.group(6)), 0)
-        elif date_time.group(3) != '00':
-            return XSDDateLiteral(int(date_time.group(1)), int(date_time.group(2)), int(date_time.group(3)), 0)
-        elif date_time.group(2) != '00':
-            return XSDGYearMonthLiteral(int(date_time.group(1)), int(date_time.group(2)), 0)
+    def _clean_wdqs_datetime(dateTime: XSDDateTimeLiteral):
+        if dateTime.hour != 0 or dateTime.minute != 0 or dateTime.second != 0:
+            return dateTime
+        elif dateTime.day != 0:
+            return XSDDateLiteral(dateTime.year, dateTime.month, dateTime.day, dateTime.timezone_offset)
+        elif dateTime.month != 0:
+            return XSDGYearMonthLiteral(dateTime.year, dateTime.month, dateTime.timezone_offset)
+        elif dateTime.year != 0:
+            return XSDGYearLiteral(dateTime.year, dateTime.timezone_offset)
         else:
-            return XSDGYearLiteral(int(date_time.group(1)), 0)
+            raise ValueError('Invalid xsd:dateTime:{}'.format(dateTime))
 
     def format_value(self, value: Union[Entity, Literal], language_code: str) -> dict:
         # TODO: instead of using datatypes as @type, use Literal?

@@ -19,6 +19,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import json
+import re
+from datetime import datetime, timezone, timedelta, date, time
 from decimal import Decimal
 
 from typing import Sequence, Union, Optional
@@ -106,17 +108,36 @@ platypus_calendar = Datatype('http://askplatyp.us/vocab#calendar', (rdfs_Literal
 platypus_numeric = Datatype('http://askplatyp.us/vocab#numeric', (rdfs_Literal,))  # TODO: right URI?
 xsd_anyURI = Datatype('http://www.w3.org/2001/XMLSchema#anyURI', (rdfs_Literal,))
 xsd_boolean = Datatype('http://www.w3.org/2001/XMLSchema#boolean', (rdfs_Literal,))
+xsd_dateTime = Datatype('http://www.w3.org/2001/XMLSchema#dateTime', (rdfs_Literal, platypus_calendar))
+xsd_date = Datatype('http://www.w3.org/2001/XMLSchema#date', (rdfs_Literal, platypus_calendar))
 xsd_decimal = Datatype('http://www.w3.org/2001/XMLSchema#decimal', (rdfs_Literal, platypus_numeric))
 xsd_double = Datatype('http://www.w3.org/2001/XMLSchema#double', (rdfs_Literal, platypus_numeric))
 xsd_duration = Datatype('http://www.w3.org/2001/XMLSchema#duration', (rdfs_Literal,))
 xsd_float = Datatype('http://www.w3.org/2001/XMLSchema#float', (rdfs_Literal, platypus_numeric))
-xsd_integer = Datatype('http://www.w3.org/2001/XMLSchema#integer', (rdfs_Literal, platypus_numeric, xsd_decimal))
-xsd_string = Datatype('http://www.w3.org/2001/XMLSchema#string', (rdfs_Literal,))
-xsd_dateTime = Datatype('http://www.w3.org/2001/XMLSchema#dateTime', (rdfs_Literal, platypus_calendar))
-xsd_date = Datatype('http://www.w3.org/2001/XMLSchema#date', (rdfs_Literal, platypus_calendar))
 xsd_gYearMonth = Datatype('http://www.w3.org/2001/XMLSchema#gYearMonth', (rdfs_Literal, platypus_calendar))
 xsd_gYear = Datatype('http://www.w3.org/2001/XMLSchema#gYear', (rdfs_Literal, platypus_calendar))
+xsd_integer = Datatype('http://www.w3.org/2001/XMLSchema#integer', (rdfs_Literal, platypus_numeric, xsd_decimal))
+xsd_string = Datatype('http://www.w3.org/2001/XMLSchema#string', (rdfs_Literal,))
+xsd_time = Datatype('http://www.w3.org/2001/XMLSchema#time', (rdfs_Literal, platypus_calendar))
 geo_wktLiteral = Datatype('http://www.opengis.net/ont/geosparql#wktLiteral', (rdfs_Literal,))
+
+_datatype_registry = {
+    'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString': rdf_langString,
+    'http://www.w3.org/2001/XMLSchema#anyURI': xsd_anyURI,
+    'http://www.w3.org/2001/XMLSchema#boolean': xsd_boolean,
+    'http://www.w3.org/2001/XMLSchema#dateTime': xsd_dateTime,
+    'http://www.w3.org/2001/XMLSchema#date': xsd_date,
+    'http://www.w3.org/2001/XMLSchema#decimal': xsd_decimal,
+    'http://www.w3.org/2001/XMLSchema#double': xsd_double,
+    'http://www.w3.org/2001/XMLSchema#duration': xsd_duration,
+    'http://www.w3.org/2001/XMLSchema#float': xsd_float,
+    'http://www.w3.org/2001/XMLSchema#gYearMonth': xsd_gYearMonth,
+    'http://www.w3.org/2001/XMLSchema#gYear': xsd_gYear,
+    'http://www.w3.org/2001/XMLSchema#integer': xsd_integer,
+    'http://www.w3.org/2001/XMLSchema#string': xsd_string,
+    'http://www.w3.org/2001/XMLSchema#time': xsd_time,
+    'http://www.opengis.net/ont/geosparql#wktLiteral': geo_wktLiteral
+}
 
 
 class Literal:
@@ -145,15 +166,99 @@ class Literal:
         return hash(self.lexical_form)
 
 
-def build_literal(lexical_form: str, datatype: Optional[Datatype] = None, language_code: Optional[str] = None):
-    if language_code is not None:
-        if datatype is not None and datatype != rdf_langString:
-            raise ValueError('Literals with language code must have the rdf:langString datatype')
-        return RDFLangStringLiteral(lexical_form, language_code)
-    elif datatype is None or datatype == xsd_string:
+_xsd_datetime_re = re.compile(r'([+-]?\d{2,})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(\\.\d+)?)(.{0,6})')
+_xsd_date_re = re.compile(r'([+-]?\d{2,})-(\d{2})-(\d{2})(\\.{0,6})')
+_xsd_time_re = re.compile(r'(\d{2}):(\d{2}):(\d{2}(.\d+)?)(\\.{0,6})')
+_xsd_gYearMonth_re = re.compile(r'([+-]?\d{2,})-(\d{2})(\\.{0,6})')
+_xsd_gYear_re = re.compile(r'([+-]?\d{2,})(\\.{0,6})')
+_xsd_timezone_re = re.compile(r'([+-])(\d{2}):(\d{2})')
+
+
+def _parse_timezone(text: str, datatype: str) -> Optional[int]:
+    if text == '':
+        return None
+    if text == 'Z':
+        return 0
+    match = _xsd_timezone_re.match(text)
+    if not match:
+        raise ValueError('Invalid {} lexical form: {}'.format(datatype, text))
+    return (-1 if match.group(1) == '-' else 1) * (int(match.group(2)) * 60 + int(match.group(3)))
+
+
+def build_literal(lexical_form: str, datatype: Optional[Union[Datatype, str]] = None,
+                  language_code: Optional[str] = None) -> Literal:
+    # default datatype
+    if datatype is None:
+        datatype = xsd_string if language_code is None else rdf_langString
+
+    # parse datatype
+    if isinstance(datatype, str):
+        if datatype in _datatype_registry:
+            datatype = _datatype_registry[datatype]
+        else:
+            datatype = Datatype(datatype, (rdfs_Literal,))
+
+    # language_code validation
+    if language_code is not None and datatype != rdf_langString:
+        raise ValueError('Literals with language code must have the rdf:langString datatype')
+
+    # we build objects
+    if datatype == rdf_langString:
+        if language_code is None:
+            raise ValueError('rdf:langString literals should have a language code')
+        else:
+            return RDFLangStringLiteral(lexical_form, language_code)
+    if datatype == xsd_anyURI:
+        return XSDAnyURILiteral(lexical_form)
+    elif datatype == xsd_boolean:
+        if lexical_form == 'true' or lexical_form == '1':
+            return XSDBooleanLiteral(True)
+        elif lexical_form == 'false' or lexical_form == '0':
+            return XSDBooleanLiteral(False)
+        else:
+            raise ValueError('Invalid xsd:boolean lexical form: {}'.format(lexical_form))
+    elif datatype == xsd_dateTime:
+        match = _xsd_datetime_re.match(lexical_form)
+        if match is None:
+            raise ValueError('Invalid xsd:dateTime lexical form: {}'.format(lexical_form))
+        return XSDDateTimeLiteral(int(match.group(1)), int(match.group(2)), int(match.group(3)),
+                                  int(match.group(4)), int(match.group(5)), int(match.group(6)),
+                                  _parse_timezone(match.group(8), 'xsd:dateTime'))
+    elif datatype == xsd_date:
+        match = _xsd_date_re.match(lexical_form)
+        if match is None:
+            raise ValueError('Invalid xsd:date lexical form: {}'.format(lexical_form))
+        return XSDDateLiteral(int(match.group(1)), int(match.group(2)), int(match.group(3)),
+                              _parse_timezone(match.group(4), 'xsd:date'))
+    elif datatype == xsd_decimal:
+        return XSDDecimalLiteral(Decimal(lexical_form))
+    elif datatype == xsd_double:
+        return XSDDoubleLiteral(float(lexical_form))  # TODO: parses everything?
+    elif datatype == xsd_float:
+        return XSDFloatLiteral(float(lexical_form))  # TODO: parses everything?
+    elif datatype == xsd_gYearMonth:
+        match = _xsd_date_re.match(lexical_form)
+        if match is None:
+            raise ValueError('Invalid xsd:gYear lexical form: {}'.format(lexical_form))
+        return XSDGYearMonthLiteral(int(match.group(1)), int(match.group(2)),
+                                    _parse_timezone(match.group(3), 'xsd:gYearMonth'))
+    elif datatype == xsd_gYear:
+        match = _xsd_date_re.match(lexical_form)
+        if match is None:
+            raise ValueError('Invalid xsd:gYear lexical form: {}'.format(lexical_form))
+        return XSDGYearLiteral(int(match.group(1)), _parse_timezone(match.group(2), 'xsd:gYear'))
+    elif datatype == xsd_integer:
+        return XSDIntegerLiteral(int(lexical_form))
+    elif datatype == xsd_time:
+        match = _xsd_time_re.match(lexical_form)
+        if match is None:
+            raise ValueError('Invalid xsd:time lexical form: {}'.format(lexical_form))
+        return XSDTimeLiteral(int(match.group(1)), int(match.group(2)), int(match.group(3)),
+                              _parse_timezone(match.group(5), 'xsd:time'))
+    elif datatype == xsd_string:
         return XSDStringLiteral(lexical_form)
     else:
-        return UnknownLiteral(lexical_form, datatype)  # TODO: improve
+        return UnknownLiteral(lexical_form, datatype)
 
 
 class RDFLangStringLiteral(Literal):
@@ -223,6 +328,12 @@ def _format_timezone(offset: Optional[int]) -> str:
         '{:+02d}:{:02d}'.format(offset / 60, abs(offset) % 60)
 
 
+def _timezone_to_python(offset: Optional[int]) -> Optional[timezone]:
+    if offset is None:
+        return None
+    return timezone(timedelta(minutes=offset))
+
+
 class XSDDateTimeLiteral(Literal):
     def __init__(self, year: int, month: int, day: int, hour: int, minute: int, second: int,
                  timezone_offset: Optional[int] = None):
@@ -247,6 +358,14 @@ class XSDDateTimeLiteral(Literal):
     def datatype(self) -> Datatype:
         return xsd_dateTime
 
+    @property
+    def datetime(self) -> datetime:
+        """
+        :raise ValueError if not in datetime range
+        """
+        return datetime(self.year, self.month, self.day, self.hour, self.minute, self.second, 0,
+                        _timezone_to_python(self.timezone_offset))
+
 
 class XSDDateLiteral(Literal):
     def __init__(self, year: int, month: int, day: int, timezone_offset: Optional[int] = None):
@@ -266,6 +385,13 @@ class XSDDateLiteral(Literal):
     def datatype(self) -> Datatype:
         return xsd_date
 
+    @property
+    def date(self) -> date:
+        """
+        :raise ValueError if not in date range
+        """
+        return date(self.year, self.month, self.day)
+
 
 class XSDDecimalLiteral(Literal):
     def __init__(self, value: Decimal):
@@ -280,8 +406,46 @@ class XSDDecimalLiteral(Literal):
     def datatype(self) -> Datatype:
         return xsd_decimal
 
+    @property
+    def value(self) -> Decimal:
+        return self._value
+
     def __str__(self) -> str:
         return self.lexical_form
+
+
+class XSDDoubleLiteral(Literal):
+    def __init__(self, value: float):
+        self._value = value
+
+    @property
+    def lexical_form(self) -> str:
+        return str(self._value)
+
+    @property
+    def datatype(self) -> Datatype:
+        return xsd_double
+
+    @property
+    def value(self) -> float:
+        return self._value
+
+
+class XSDFloatLiteral(Literal):
+    def __init__(self, value: float):
+        self._value = value
+
+    @property
+    def lexical_form(self) -> str:
+        return str(self._value)
+
+    @property
+    def datatype(self) -> Datatype:
+        return xsd_float
+
+    @property
+    def value(self) -> float:
+        return self._value
 
 
 class XSDGYearMonthLiteral(Literal):
@@ -331,6 +495,10 @@ class XSDIntegerLiteral(Literal):
     def datatype(self) -> Datatype:
         return xsd_integer
 
+    @property
+    def value(self) -> int:
+        return self._value
+
     def __str__(self) -> str:
         return self.lexical_form
 
@@ -349,6 +517,33 @@ class XSDStringLiteral(Literal):
 
     def __str__(self) -> str:
         return json.dumps(self._string)
+
+
+class XSDTimeLiteral(Literal):
+    def __init__(self, hour: int, minute: int, second: int, timezone_offset: Optional[int] = None):
+        """
+        :param timezone_offset: The timezone offset in minutes
+        """
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+        self.timezone_offset = timezone_offset
+
+    @property
+    def lexical_form(self) -> str:
+        return '{:02d}:{:02d}:{:02d}{}'.format(self.hour, self.minute, self.second,
+                                               _format_timezone(self.timezone_offset))
+
+    @property
+    def datatype(self) -> Datatype:
+        return xsd_time
+
+    @property
+    def time(self) -> time:
+        """
+        :raise ValueError if not in time range
+        """
+        return time(self.hour, self.minute, self.second, 0, _timezone_to_python(self.timezone_offset))
 
 
 class UnknownLiteral(Literal):
