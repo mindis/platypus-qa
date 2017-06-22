@@ -63,11 +63,11 @@ def root():
 
 @app.route('/v0/ask', methods=['GET'])
 def ask():
-    return _request_handler.ask(
+    return jsonify(_request_handler.ask(
         request.args['q'],
         request.args.get('lang', 'und'),
         str(request.accept_languages)
-    )
+    ))
 
 
 @app.route('/v0/samples', methods=['GET'])

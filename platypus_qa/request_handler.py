@@ -169,12 +169,12 @@ class RequestHandler:
             'answer_time': time.time() - timestamp
         })
 
-        return jsonify(jsonld.compact({
+        return jsonld.compact({
             '@context': _platypus_context,
             '@type': 'hydra:Collection',
             'totalItems': len(results),
             'member': results
-        }, _platypus_context))
+        }, _platypus_context)
 
     @staticmethod
     def _clean_language_code(language_code: str, text: str):
