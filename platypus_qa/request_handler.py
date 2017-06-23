@@ -19,13 +19,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
-import signal
 import time
 from concurrent.futures import Future, TimeoutError
-from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Iterable, Dict, List, Optional
+from typing import Union, Iterable, List, Optional
 
-import langdetect
 from calchas_polyparser import is_math, parse_natural, is_interesting, relevance, parse_mathematica, parse_latex, IsMath
 from calchas_sympy import Translator
 from flask import current_app, request, jsonify
@@ -34,13 +31,10 @@ from sympy import latex
 from werkzeug.exceptions import NotFound
 
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
-from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term, ValueFormula
-from platypus_qa.database.model import KnowledgeBase
-from platypus_qa.database.owl import Entity, Literal
 from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
-from platypus_qa.nlp.model import NLPParser
+from platypus_qa.qa import QAHandler, safe_limited_response_builder, LazyThreadPoolExecutor
 
 _logger = logging.getLogger('request_handler')
 
@@ -64,71 +58,6 @@ _platypus_context = {
 }
 
 
-# TODO: remove, kept here for backward compatiblity
-def _safe_response_builder(func):
-    def func_wrapper(self, *args):
-        try:
-            return func(self, *args)
-        except KeyboardInterrupt:
-            raise
-        except Exception as e:
-            _logger.warning(e, exc_info=True)
-            return []
-
-    return func_wrapper
-
-
-def _safe_limited_response_builder(timeout):
-    def raise_timeout_exception(signum, frame):
-        raise TimeoutError()
-
-    def wrapper(func):
-        def func_wrapper(self, *args):
-            try:
-                signal.signal(signal.SIGALRM, raise_timeout_exception)  # TODO: POSIX only
-                signal.alarm(timeout)
-                result = func(self, *args)
-                signal.alarm(0)
-                return result
-            except KeyboardInterrupt:
-                raise
-            except TimeoutError:
-                _logger.warning('Processing timout')
-                return []
-            except Exception as e:
-                _logger.warning(e, exc_info=True)
-                return []
-
-        return func_wrapper
-
-    return wrapper
-
-
-class LazyThreadPoolExecutor(ThreadPoolExecutor):
-    def map_first_with_result(self, fn, iterable, condition, default):
-        fs = [self.submit(fn, *args) for args in iterable]
-
-        def result_iterator():
-            try:
-                for future in fs:
-                    result = future.result()
-                    if condition(result):
-                        return result
-                return default
-            finally:
-                for future in fs:
-                    future.cancel()
-
-        return result_iterator()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown(wait=False)
-        return False
-
-
 def _first_future_with_cond(futures: List[Future], condition, default, timeout=None):
     for future in futures:
         try:
@@ -144,26 +73,27 @@ def _first_future_with_cond(futures: List[Future], condition, default, timeout=N
 
 
 class RequestHandler:
-    def __init__(self, parsers: List[NLPParser], knowledge_base: KnowledgeBase, request_logger: DictLogger):
-        self._parsers = parsers
-        self._knowledge_base = knowledge_base
+    def __init__(self, qa_handler: QAHandler, request_logger: DictLogger):
+        self._qa_handler = qa_handler
         self._request_logger = request_logger
 
-    def ask(self, question: str, lang: str, accept_language: Optional[str]):
-        self._question = question
-        self._question_language_code = self._clean_language_code(lang, self._question)
-        self._accept_languages = accept_language
-
+    def ask(self, question: str, language_code: str, accept_language: Optional[str]):
         timestamp = time.time()
 
-        results = self._do_cas()
-        for parser in self._parsers:
-            if not results:
-                results = self._do_with_grammatical_analysis(parser)
+        results = self._do_cas(question)
+        if not results:
+            interpretations = self._qa_handler.answer(question, language_code)
+            results = []
+            for interpretation in interpretations:
+                results.extend({
+                                   'result': self._qa_handler.to_json_ld(result, accept_language),
+                                   'resultScore': interpretation.interpretation.score / 100,
+                                   'platypus:term': str(interpretation.interpretation)
+                               } for result in interpretation.results)
 
         self._request_logger.log({
-            'question': self._question,
-            'language': self._question_language_code,
+            'question': question,
+            'language': language_code,
             'with_results': bool(results),
             'timestamp': timestamp,
             'answer_time': time.time() - timestamp
@@ -176,53 +106,17 @@ class RequestHandler:
             'member': results
         }, _platypus_context)
 
-    @staticmethod
-    def _clean_language_code(language_code: str, text: str):
-        if language_code == 'und':
-            return langdetect.detect(text)  # TODO: more clever
-        return language_code
-
-    @_safe_limited_response_builder(PROCESSING_TIMEOUT)
-    def _do_with_grammatical_analysis(self, parser: NLPParser):
-        if self._question_language_code not in parser.supported_languages:
-            return []
-        return self._do_with_terms(
-            GrammaticalAnalyzer(parser, self._knowledge_base, self._question_language_code).analyze(self._question)
-        )
-
-    def _do_with_terms(self, parsed_terms: Iterable[Term]):
-        parsed_terms = list(sorted(parsed_terms, key=lambda term: -term.score))
-
-        with LazyThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(self._knowledge_base.evaluate_term, term) for term in parsed_terms]
-            results = []
-            max_score = 0
-            for i in range(len(parsed_terms)):
-                term = parsed_terms[i]
-                if term.score < max_score:
-                    return results
-
-                query_results = futures[i].result()
-                if query_results:
-                    max_score = term.score
-                    results.extend({
-                                       'result': value,
-                                       'resultScore': term.score / 100,
-                                       'platypus:term': str(term)
-                                   } for value in executor.map(self._format_value, query_results) if value is not None)
-            return results
-
-    @_safe_limited_response_builder(5)
-    def _do_cas(self):
-        math_notation = is_math(self._question)
+    @safe_limited_response_builder(5)
+    def _do_cas(self, question: str):
+        math_notation = is_math(question)
         if math_notation == IsMath.No:
             return []
 
-        calchas_tree = parse_mathematica(self._question)
+        calchas_tree = parse_mathematica(question)
         if calchas_tree is None:
-            calchas_tree = parse_natural(self._question)
+            calchas_tree = parse_natural(question)
         if calchas_tree is None:
-            calchas_tree = parse_latex(self._question)
+            calchas_tree = parse_latex(question)
         if calchas_tree is None:
             return []
 
@@ -230,7 +124,7 @@ class RequestHandler:
         output_string = str(sympy_tree)
         output_latex = latex(sympy_tree)
 
-        if not is_interesting(str(self._question), output_string) and math_notation == IsMath.Maybe:
+        if not is_interesting(str(question), output_string) and math_notation == IsMath.Maybe:
             return []
         if len(output_latex) > 1 and output_latex.isalpha():
             return []
@@ -244,78 +138,41 @@ class RequestHandler:
                     '@value': output_latex
                 }
             },
-            'resultScore': relevance(self._question, output_string)
+            'resultScore': relevance(question, output_string)
         }]
 
-    def _format_value(self, value: Union[Entity, Literal]) -> Optional[Dict]:
-        try:
-            return self._knowledge_base.format_value(value, self._accept_languages)
-        except ValueError as e:
-            _logger.warning(e)
-            return None
 
-
-class _BaseWikidataSparqlHandler:
-    def __init__(self, parsers: List[NLPParser], wikidata_kb: WikidataKnowledgeBase):
-        self._parsers = parsers
-        self._wikidata_kb = wikidata_kb
+class SimpleWikidataSparqlHandler:
+    def __init__(self, qa_handler: QAHandler, knowledge_base: WikidataKnowledgeBase):
+        self._qa_handler = qa_handler
+        self._knowledge_base = knowledge_base
 
     def build_sparql(self):
-        self._question = request.args['q']
-        self._question_language_code = self._clean_language_code(request.args.get('lang', 'und'), self._question)
-
-        with LazyThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(self._do_with_grammatical_analysis, parser) for parser in self._parsers]
-            return self._output_result(_first_future_with_cond(futures, bool, None, PROCESSING_TIMEOUT))
-
-    @staticmethod
-    def _clean_language_code(language_code: str, text: str):
-        if language_code == 'und':
-            return langdetect.detect(text)  # TODO: more clever
-        return language_code
-
-    @_safe_response_builder
-    def _do_with_grammatical_analysis(self, parser: NLPParser):
-        if self._question_language_code not in parser.supported_languages:
-            return []
-        return self._do_with_terms(
-            GrammaticalAnalyzer(parser, self._wikidata_kb, self._question_language_code).analyze(self._question)
-        )
-
-    def _do_with_terms(self, parsed_terms: Iterable[Term]):
-        raise NotImplementedError()
-
-    def _output_result(self, result):
-        raise NotImplementedError()
-
-
-class SimpleWikidataSparqlHandler(_BaseWikidataSparqlHandler):
-    def _do_with_terms(self, parsed_terms: Iterable[Term]):
-        parsed_terms = sorted(parsed_terms, key=lambda term: -term.score)
-        with LazyThreadPoolExecutor(max_workers=8) as executor:
-            execution_result = executor.map_first_with_result(
-                lambda term: self._wikidata_kb.build_sparql(term) if self._wikidata_kb.has_results(
-                    term) else None,
-                ((term,) for term in parsed_terms),
-                bool,
-                None
-            )
-            return execution_result
-
-    def _output_result(self, sparql):
-        if sparql is None:
+        question = request.args['q']
+        language_code = request.args.get('lang', 'und')
+        interpretations = self._qa_handler.answer(question, language_code)
+        if not interpretations:
             raise NotFound('Not able to build a good SPARQL question for the {} question "{}"'.format(
-                self._question_language_code, self._question
-            ))
-        return current_app.response_class(sparql, mimetype='application/sparql-query')
+                language_code, question))
+        return current_app.response_class(
+            self._knowledge_base.build_sparql(interpretations[0].interpretation), mimetype='application/sparql-query')
 
 
-class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
-    def _do_with_terms(self, parsed_terms: Iterable[Term]):
+class DisambiguatedWikidataSparqlHandler:
+    def __init__(self, qa_handler: QAHandler, knowledge_base: WikidataKnowledgeBase):
+        self._qa_handler = qa_handler
+        self._knowledge_base = knowledge_base
+
+    def build_sparql(self):
+        question = request.args['q']
+        language_code = request.args.get('lang', 'und')
+        parsed_terms = [interpretation.interpretation for interpretation in
+                        self._qa_handler.answer(question, language_code)]
+
         # TODO: sorting
         disambiguation_tree = find_process(sorted(parsed_terms, key=lambda term: -term.score))
         with LazyThreadPoolExecutor(max_workers=8) as executor:
-            return self._serialize_disambiguation_tree(disambiguation_tree, executor)
+            return jsonify(self._serialize_disambiguation_tree(disambiguation_tree, executor))
 
     def _serialize_disambiguation_tree(self, disambiguation_tree: Union[DisambiguationStep, Iterable[Term]], executor):
         if isinstance(disambiguation_tree, DisambiguationStep):
@@ -343,8 +200,8 @@ class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
         elif isinstance(disambiguation_tree, Iterable):
             # TODO: tous les retourner ?
             execution_result = executor.map_first_with_result(
-                lambda term: self._wikidata_kb.build_sparql(term) if self._wikidata_kb.has_results(
-                    term) else None,
+                lambda term: self._knowledge_base.build_sparql(term)
+                if self._knowledge_base.has_results(term) else None,
                 ((term,) for term in sorted(disambiguation_tree, key=lambda term: -term.score)),
                 bool,
                 None
@@ -363,6 +220,3 @@ class DisambiguatedWikidataSparqlHandler(_BaseWikidataSparqlHandler):
         if not isinstance(term, ValueFormula):
             raise ValueError('Only ValueFormula are expected as disambiguation value')
         return term.term.to_jsonld()
-
-    def _output_result(self, disambiguation_tree):
-        return jsonify(disambiguation_tree)

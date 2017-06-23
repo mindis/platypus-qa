@@ -45,3 +45,6 @@ execute queries. Currently only Wikidata is supported
 * A grammatical analyzer for questions, mainly implemented in
 `analyzer.grammatical_anlyzer`.
 * `request_handler` that puts all pieces together.
+
+If you want to use it as a library, the only stable interfaces are the ones directly accessible from the `platypus_qa` module
+(and not from submodules and files).

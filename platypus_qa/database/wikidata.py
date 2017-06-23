@@ -32,7 +32,7 @@ from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, Eq
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
     BinaryArithmeticOperatorFormula, Type
-from platypus_qa.database.model import KnowledgeBase
+from platypus_qa.database.model import KnowledgeBase, FormatterError, QAInterpretationResult
 from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
     XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, \
     XSDDateLiteral, XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
@@ -581,13 +581,14 @@ class WikidataKnowledgeBase(KnowledgeBase):
         else:
             raise ValueError('Invalid xsd:dateTime:{}'.format(dateTime))
 
-    def format_value(self, value: Union[Entity, Literal], language_code: str) -> dict:
+    def format_to_jsonld(self, result: QAInterpretationResult, accept_language: str) -> dict:
+        value = result.result
         # TODO: instead of using datatypes as @type, use Literal?
         if isinstance(value, Entity):
-            result = self._format_entity(value.iri, language_code)
+            result = self._format_entity(value.iri, accept_language)
         elif isinstance(value, Literal):
             if value.datatype == geo_wktLiteral:
-                match = re.match('^Point\((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$', value.lexical_form)
+                match = re.match('^Point\((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$', value.lexical_form.strip())
                 if match:
                     result = {
                         '@id': 'geo:{},{}'.format(match.group(2), match.group(1)),
@@ -613,13 +614,13 @@ class WikidataKnowledgeBase(KnowledgeBase):
                     'http://www.w3.org/1999/02/22-rdf-syntax-ns#value': value.to_jsonld()
                 }
         else:
-            raise ValueError('Unexpected value: {}'.format(value))
+            raise FormatterError('Unexpected value: {}'.format(value))
 
         if 'context_subject' in value.__dict__ and 'context_predicate' in value.__dict__ and \
                 value.__dict__['context_subject'] and value.__dict__['context_predicate'] in _wikidata_to_schema:
             result['@reverse'] = {
                 _wikidata_to_schema[value.__dict__['context_predicate']]:
-                    self._format_entity(value.__dict__['context_subject'], language_code)
+                    self._format_entity(value.__dict__['context_subject'], accept_language)
             }
         return result
 

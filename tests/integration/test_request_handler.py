@@ -25,6 +25,7 @@ from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DummyDictLogger
 from platypus_qa.nlp.core_nlp import CoreNLPParser
 from platypus_qa.nlp.syntaxnet import SyntaxNetParser
+from platypus_qa.qa import QAHandler
 from platypus_qa.request_handler import RequestHandler
 from platypus_qa.samples import SAMPLE_QUESTIONS
 
@@ -40,9 +41,10 @@ class RequestHandlerTest(unittest.TestCase):
 
     def testQuestions(self):
         request_handler = RequestHandler(
-            [CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']),
-             SyntaxNetParser(['https://syntaxnet.askplatyp.us/v1/parsey-universal-full'])],
-            WikidataKnowledgeBase('https://kb.askplatyp.us/api/v1', compacted_individuals=False),
+            QAHandler(
+                [CoreNLPParser(['https://corenlp.askplatyp.us/1.7/']),
+                 SyntaxNetParser(['https://syntaxnet.askplatyp.us/v1/parsey-universal-full'])],
+                WikidataKnowledgeBase('https://kb.askplatyp.us/api/v1', compacted_individuals=False)),
             DummyDictLogger()
         )
         bad_count = 0

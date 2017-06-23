@@ -24,6 +24,21 @@ from platypus_qa.database.formula import Term, Select
 from platypus_qa.database.owl import Literal, Class, owl_Thing, Entity
 
 
+class QAInterpretationResult:
+    def __init__(self, result: Union[Entity, Literal]):
+        self.result = result
+
+
+class QAInterpretation:
+    def __init__(self, interpretation: Term, results: List[QAInterpretationResult]):
+        self.interpretation = interpretation
+        self.results = results
+
+
+class FormatterError(Exception):
+    pass
+
+
 class KnowledgeBase:
     def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[Select]:
         raise NotImplementedError("KnowledgeBase.individuals_from_label is not implemented")
@@ -50,8 +65,10 @@ class KnowledgeBase:
     def evaluate_term(self, term: Term) -> List[Union[Entity, Literal]]:
         raise NotImplementedError("KnowledgeBase.evaluate_term is not implemented")
 
-    def format_value(self, term: Union[Entity, Literal], language_code: str) -> dict:  # TODO: one or two methods?
+    def format_to_jsonld(self, result: QAInterpretationResult,
+                         accept_language: str) -> dict:  # TODO: one or two methods?
         """
         :return: dict ready to serialize in JSON
+        :raise FormatterError
         """
         raise NotImplementedError("KnowledgeBase.format_resource is not implemented")
