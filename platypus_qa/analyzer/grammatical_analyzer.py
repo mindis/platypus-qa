@@ -29,8 +29,8 @@ from nltk.corpus import wordnet
 from platypus_qa.analyzer.case_words import get_case_word_from_str
 from platypus_qa.analyzer.literal_parser import parse_literal
 from platypus_qa.analyzer.question_words import get_question_word_from_str, OpenQuestionWord, QuestionWord
-from platypus_qa.database.formula import VariableFormula, Function, AndFormula, EqualityFormula, ValueFormula, \
-    ExistsFormula, Term, Formula, Type, swap_function_arguments
+from platypus_qa.database.formula import VariableFormula, Select, AndFormula, EqualityFormula, ValueFormula, \
+    ExistsFormula, Term, Type
 from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import Class, owl_Thing, rdfs_Literal
 from platypus_qa.nlp.model import Sentence, NLPParser, Token, SimpleToken
@@ -140,7 +140,7 @@ class GrammaticalAnalyzer:
             'Analysis of sentence "{}" lead to terms: {}'.format(sentence, [str(result) for result in results]))
         return [result for result in results if result]
 
-    def _analyze_tree(self, node: Token, expected_type: Type = Type.from_entity(owl_Thing)) -> Set[Function]:
+    def _analyze_tree(self, node: Token, expected_type: Type = Type.from_entity(owl_Thing)) -> Set[Select]:
         _logger.info('main {}'.format(node.word))
         possibles = set()
 
@@ -151,7 +151,7 @@ class GrammaticalAnalyzer:
 
         return possibles
 
-    def _analyze_thing_tree(self, node: Token) -> Set[Function]:
+    def _analyze_thing_tree(self, node: Token) -> Set[Select]:
         possibles = set()
 
         # simple entity
@@ -239,7 +239,7 @@ class GrammaticalAnalyzer:
         return possibles
 
     def _build_tree_with_children(self, children_to_process: Iterable[Token], root_tokens: List[Token],
-                                  expected_type: Type, nounifier_patterns=None) -> Set[Function]:
+                                  expected_type: Type, nounifier_patterns=None) -> Set[Select]:
         output_variable = self._create_variable('result')
         # We iterate on children not used in the predicate
         # We compute first the list of children to process
@@ -257,7 +257,7 @@ class GrammaticalAnalyzer:
                 main_relations = self._relations_for_nodes(root_tokens, nounifier_patterns, expected_type)
                 to_intersect_elements.append([function(output_variable) for function in
                                               self._set_argument_to_relations(
-                                                  (swap_function_arguments(rel) for rel in main_relations),
+                                                  (rel.swap_arguments() for rel in main_relations),
                                                   child)])
 
             elif child.main_ud_dependency <= UDDependency.nmod_poss:
@@ -321,27 +321,27 @@ class GrammaticalAnalyzer:
                 ))
                 return set()
 
-        return {Function(output_variable, AndFormula(to_intersect))
+        return {Select(output_variable, AndFormula(to_intersect))
                 for to_intersect in product(*to_intersect_elements) if to_intersect}
 
-    def _set_argument_to_relations(self, relations: Iterable[Function[Function[Formula]]], argument: Token):
+    def _set_argument_to_relations(self, relations: Iterable[Select], argument: Token):
         relations_by_domain = defaultdict(list)
         for relation in relations:
-            relations_by_domain[relation.argument_type].append(relation)
+            relations_by_domain[relation.type[0]].append(relation)
 
         results = set()
         variable = self._create_variable('arg')
         result = self._create_variable('result')
         for domain, relations in relations_by_domain.items():
-            results |= {Function(result, ExistsFormula(variable, relation(variable)(result) & arg_relation(variable)))
+            results |= {Select(result, ExistsFormula(variable, relation(variable)(result) & arg_relation(variable)))
                         for relation in relations for arg_relation in self._analyze_tree(argument, domain)}
         return results
 
-    def _add_data_from_question(self, term: Function, question_word: QuestionWord) -> Set[Function]:
+    def _add_data_from_question(self, term: Select, question_word: QuestionWord) -> Set[Select]:
         if not isinstance(question_word, OpenQuestionWord):
             return {term}
-        if not question_word.expected_properties or term.argument_type <= Type.from_entity(rdfs_Literal):
-            if term.argument_type & question_word.expected_type == Type.bottom():
+        if not question_word.expected_properties or term.type <= Type.from_entity(rdfs_Literal):
+            if term.type & question_word.expected_type == Type.bottom():
                 return set()  # Typing does not works
             else:
                 return {term}  # the return type is already a literal of the right type or we have no expected property
@@ -353,19 +353,19 @@ class GrammaticalAnalyzer:
         ))
         result_variable = self._create_variable('result')
         intermediate_variable = self._create_variable('temp')
-        return {Function(result_variable, ExistsFormula(intermediate_variable,
-                                                        relation(intermediate_variable)(result_variable) &
-                                                        term(intermediate_variable)))
+        return {Select(result_variable, ExistsFormula(intermediate_variable,
+                                                      relation(intermediate_variable)(result_variable) &
+                                                      term(intermediate_variable)))
                 for relation in relations}
 
-    def _individuals_for_nodes(self, nodes, type_filter: Class = owl_Thing) -> List[Function[Formula]]:
+    def _individuals_for_nodes(self, nodes, type_filter: Class = owl_Thing) -> List[Select]:
         individuals = self._knowledge_base.individuals_from_label(
             self._nodes_to_string(nodes), self._language_code, type_filter)
         _logger.info(
             'individual: {} with result {}'.format(self._nodes_to_string(nodes), [str(i) for i in individuals]))
         return individuals
 
-    def _relations_for_nodes(self, nodes, nounified_patterns=None, range: Type = Type.top()) -> List[Function]:
+    def _relations_for_nodes(self, nodes, nounified_patterns=None, range: Type = Type.top()) -> List[Select]:
         label = self._nodes_to_string(nodes)
         relations = self._find_relations_with_pattern(label, nounified_patterns, range)
         if not relations and len(nodes) == 1:
@@ -410,7 +410,7 @@ class GrammaticalAnalyzer:
             self._nodes_to_string(nodes), [str(i) for i in literals], expected_type))
 
         variable = self._create_variable('value')
-        return {Function(variable, EqualityFormula(variable, ValueFormula(literal, input_str))) for literal in literals}
+        return {Select(variable, EqualityFormula(variable, ValueFormula(literal, input_str))) for literal in literals}
 
     @staticmethod
     def _nouns_for_synsets(synsets, language_code: str):

@@ -85,6 +85,30 @@ class _FormulaTest(unittest.TestCase):
         self.assertLess(Type.bottom(), owl_Thing)
         self.assertLessEqual(Type.bottom(), owl_Nothing)
 
+        self.assertEqual(1, len(Type.from_entity(xsd_string)))
+        self.assertEqual(1, len(Type.from_entity(schema_Person)))
+        self.assertEqual(Type.from_entity(schema_Person), Type.from_entity(schema_Person)[0])
+        self.assertEqual(Type.bottom(), Type.from_entity(schema_Person)[1])
+
+        # tuples
+        self.assertEqual(Type.bottom(), Type.tuple())
+        self.assertEqual(Type.bottom(), Type.tuple(Type.bottom()))
+        self.assertEqual(Type.top(), Type.tuple(Type.top()))
+        self.assertEqual(Type.from_entity(schema_Person), Type.tuple(Type.from_entity(schema_Person)))
+        self.assertEqual(Type.from_entity(schema_Person), Type.tuple(Type.from_entity(schema_Person), Type.bottom()))
+        self.assertEqual(Type.from_entity(schema_Person),
+                         Type.tuple(Type.from_entity(schema_Person), Type.bottom(), Type.bottom()))
+        self.assertEqual(Type.tuple(Type.from_entity(schema_Person), Type.bottom(), Type.top()),
+                         Type.tuple(Type.from_entity(schema_Person), Type.bottom(), Type.top()))
+
+        self.assertEqual(2, len(Type.tuple(Type.from_entity(schema_Person), Type.from_entity(xsd_string))))
+        self.assertEqual(Type.from_entity(schema_Person),
+                         Type.tuple(Type.from_entity(schema_Person), Type.from_entity(xsd_string))[0])
+        self.assertEqual(Type.from_entity(xsd_string),
+                         Type.tuple(Type.from_entity(schema_Person), Type.from_entity(xsd_string))[1])
+        self.assertEqual(Type.bottom(),
+                         Type.tuple(Type.from_entity(schema_Person), Type.from_entity(xsd_string))[2])
+
     def testValueFormula(self):
         self.assertEqual(Type.from_entity(schema_Person),
                          ValueFormula(NamedIndividual('wd:Q42', (schema_Person,))).type)
@@ -235,49 +259,54 @@ class _FormulaTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             TripleFormula(_JohnDoe, _1, _foo)
 
-    def testFunction(self):
+    def testSelect(self):
         self.assertEqual(
-            Function(_x, TripleFormula(_x, _schema_name, _foo)),
-            Function(_y, TripleFormula(_y, _schema_name, _foo))
+            Select(_x, TripleFormula(_x, _schema_name, _foo)),
+            Select(_y, TripleFormula(_y, _schema_name, _foo))
         )
-        self.assertEqual(Function(_x, TripleFormula(_x, _schema_name, _foo)),
-                         Function(_y, TripleFormula(_y, _schema_name, _foo)))
+        self.assertEqual(Select(_x, TripleFormula(_x, _schema_name, _foo)),
+                         Select(_y, TripleFormula(_y, _schema_name, _foo)))
 
-        self.assertEqual(Type.top(), Function(_x, true_formula).argument_type)
+        self.assertEqual(Type.top(), Select(_x, true_formula).type)
         self.assertEqual(Type.from_entity(xsd_boolean),
-                         Function(_x, ExistsFormula(_y, EqualityFormula(_false, _x))).argument_type)
+                         Select(_x, ExistsFormula(_y, EqualityFormula(_false, _x))).type)
         self.assertEqual(
             Type.from_entity(xsd_string),
-            Function(_x, EqualityFormula(_x, ValueFormula(XSDStringLiteral('foo')))).argument_type
+            Select(_x, EqualityFormula(_x, ValueFormula(XSDStringLiteral('foo')))).type
         )
         self.assertEqual(
             Type.from_entity(xsd_string),
-            Function(_x, EqualityFormula(_x, ValueFormula(XSDStringLiteral('foo')))).argument_type
+            Select(_x, EqualityFormula(_x, ValueFormula(XSDStringLiteral('foo')))).type
         )
         self.assertEqual(
             Type.from_entity(schema_Person),
-            Function(_x, TripleFormula(_x, _schema_name, _foo)).argument_type
+            Select(_x, TripleFormula(_x, _schema_name, _foo)).type
         )
         self.assertEqual(
             Type.from_entity(schema_Person),
-            Function(_x, TripleFormula(_x, _schema_name, _foo) & TripleFormula(_x, _schema_name, _bar)).argument_type
+            Select(_x, TripleFormula(_x, _schema_name, _foo) & TripleFormula(_x, _schema_name, _bar)).type
         )
         self.assertEqual(
             Type.from_entity(rdf_Property) & Type.from_entity(owl_Thing),
-            Function(_x, TripleFormula(_JohnDoe, _x, _1)).argument_type
+            Select(_x, TripleFormula(_JohnDoe, _x, _1)).type
         )
         self.assertEqual(
             Type.from_entity(xsd_string),
-            Function(_x, ExistsFormula(_y, TripleFormula(_y, _schema_name, _x))).argument_type
+            Select(_x, ExistsFormula(_y, TripleFormula(_y, _schema_name, _x))).type
         )
         self.assertEqual(
             Type.from_entity(platypus_calendar),
-            Function(_x, LowerFormula(_x, _2016)).argument_type
+            Select(_x, LowerFormula(_x, _2016)).type
         )
         self.assertEqual(
             Type.from_entity(platypus_numeric),
-            Function(_x, LowerFormula(_x, _1)).argument_type
+            Select(_x, LowerFormula(_x, _1)).type
         )
 
-        self.assertTrue(Function(_x, true_formula))
-        self.assertFalse(Function(_x, false_formula))
+        self.assertTrue(Select(_x, true_formula))
+        self.assertFalse(Select(_x, false_formula))
+
+        self.assertEqual(Select([_y, _x], LowerFormula(_x, _y)),
+                         Select([_x, _y], LowerFormula(_x, _y)).swap_arguments())
+        self.assertEqual(Select([_y, _x], LowerFormula(_x, _y)),
+                         Select([_x, _y], LowerFormula(_x, _y)).swap_arguments(1, 0))

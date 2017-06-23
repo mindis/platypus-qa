@@ -28,7 +28,7 @@ from typing import Dict, List, Union, Optional, Tuple, Iterable
 import editdistance
 import requests
 
-from platypus_qa.database.formula import Term, Function, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
+from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
     BinaryArithmeticOperatorFormula, Type
@@ -97,21 +97,16 @@ class _WikidataQuerySparqlBuilder:
     def build(self, term: Term, retrieve_context=False, do_ranking=True) -> str:
         term = self._prepare_term(term, retrieve_context)
 
-        if isinstance(term, Function):
-            arguments = [term.argument]
-            inner_term = term
-            while isinstance(inner_term.body, Function):
-                inner_term = inner_term.body
-                arguments.append(inner_term.argument)
-            clauses = self._build_internal(inner_term.body).replace('\n', '\n\t')
+        if isinstance(term, Select):
+            clauses = self._build_internal(term.body).replace('\n', '\n\t')
 
             suffix = ' LIMIT 100'
-            if do_ranking and term.argument_type & Type.from_entity(owl_Thing) != Type.bottom():
-                clauses += '\n\tOPTIONAL { ' + str(term.argument) + ' wikibase:sitelinks ?sitelinksCount . }'
+            if do_ranking and term.type[0] & Type.from_entity(owl_Thing) != Type.bottom():
+                clauses += '\n\tOPTIONAL { ' + str(term.args[0]) + ' wikibase:sitelinks ?sitelinksCount . }'
                 suffix = ' ORDER BY DESC(?sitelinksCount) LIMIT 100'
 
             return 'SELECT DISTINCT {} WHERE {{\n\t{}\n}}{}'.format(
-                ' '.join(str(argument) for argument in arguments), clauses, suffix)
+                ' '.join(str(arg) for arg in term.args), clauses, suffix)
 
         if isinstance(term, Formula):
             if term.type <= Type.from_entity(xsd_boolean):
@@ -121,20 +116,20 @@ class _WikidataQuerySparqlBuilder:
 
     def _prepare_term(self, term: Term, retrieve_context=False) -> Term:
         result = VariableFormula('r')
-        if isinstance(term, Function):
-            term = Function(result, term(result))
+        if isinstance(term, Select):
+            term = Select(result, term(result))
         elif isinstance(term, Formula):
             if not (term.type <= Type.from_entity(xsd_boolean)):
-                term = Function(result, EqualityFormula(result, term))
+                term = Select(result, EqualityFormula(result, term))
         if retrieve_context:
             term = self._add_context_variable(term)
         return term
 
     def _add_context_variable(self, term: Term) -> Term:
-        if not isinstance(term, Function):
+        if not isinstance(term, Select):
             return term
 
-        result = term.argument
+        result = term.args[0]
         subject_var = VariableFormula('s')
         predicate_var = VariableFormula('p')
 
@@ -173,7 +168,7 @@ class _WikidataQuerySparqlBuilder:
         body, found = explore(term.body)
 
         if found:
-            return Function(subject_var, Function(predicate_var, Function(result, body)))
+            return Select((subject_var, predicate_var, result), body)
         else:
             return term
 
@@ -201,13 +196,9 @@ class _WikidataQuerySparqlBuilder:
             )
         elif isinstance(term, ExistsFormula):
             return self._build_internal(term.body)
-        elif isinstance(term, Function):
-            arguments = [term.argument]
-            while isinstance(term.body, Function):
-                term = term.body
-                arguments.append(term.argument)
+        elif isinstance(term, Select):
             return '{SELECT DISTINCT {} WHERE {{\n\t{}\n}}}'.format(
-                ' '.join(arguments), self._build_internal(term.body).replace('\n', '\n\t'))
+                ' '.join(term.args), self._build_internal(term.body).replace('\n', '\n\t'))
         else:
             raise ValueError('Term not supported by SPARQL builder {}'.format(term))
 
@@ -350,7 +341,7 @@ _o = VariableFormula('o')
 
 
 def _relation_for_property(property: Property):
-    return Function(_s, Function(_o, TripleFormula(_s, ValueFormula(property), _o)))
+    return Select((_s, _o), TripleFormula(_s, ValueFormula(property), _o))
 
 _property_child = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P40', owl_NamedIndividual, owl_NamedIndividual))
@@ -362,15 +353,12 @@ _item_male = ValueFormula(_WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedI
 _item_female = ValueFormula(_WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']}))
 _hadcoded_relations = {
     'en': {
-        'son': Function(_s, Function(_o,
-                                     TripleFormula(_s, _property_child, _o) &
-                                     TripleFormula(_o, _property_sex, _item_male))),
-        'daughter': Function(_s, Function(_o,
-                                          TripleFormula(_s, _property_child, _o) &
-                                          TripleFormula(_o, _property_sex, _item_female))),
-        'name': Function(_s, Function(_o, EqualityFormula(_s, _o))),
-        'identity': Function(_s, Function(_o, EqualityFormula(_s, _o))),
-        'definition': Function(_s, Function(_o, EqualityFormula(_s, _o))),
+        'son': Select((_s, _o), TripleFormula(_s, _property_child, _o) & TripleFormula(_o, _property_sex, _item_male)),
+        'daughter': Select((_s, _o),
+                           TripleFormula(_s, _property_child, _o) & TripleFormula(_o, _property_sex, _item_female)),
+        'name': Select((_s, _o), EqualityFormula(_s, _o)),
+        'identity': Select((_s, _o), EqualityFormula(_s, _o)),
+        'definition': Select((_s, _o), EqualityFormula(_s, _o)),
         'born date': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
         'born location': _relation_for_property(
@@ -379,7 +367,7 @@ _hadcoded_relations = {
             ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
         'dead location': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual)),
-        'wrote': Function(_s, Function(_o, TripleFormula(_o, _property_author, _s)))
+        'wrote': Select((_s, _o), TripleFormula(_o, _property_author, _s))
     },
     'es': {
         'fecha de nació': _relation_for_property(
@@ -416,22 +404,21 @@ class WikidataKnowledgeBase(KnowledgeBase):
         self._compacted_individuals = compacted_individuals
 
     @lru_cache(maxsize=8192)
-    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) \
-            -> List[Function[Formula]]:
+    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[Select]:
         type_filter = type_filter.iri if type_filter != owl_Thing else None
         results = self._execute_entity_search(label, language_code, type_filter)
         var = self._variable_for_name(label)
         if self._compacted_individuals:
             if not results:
                 return []
-            return [Function(var, OrFormula(
+            return [Select(var, OrFormula(
                 [EqualityFormula(var, ValueFormula(_WikidataItem(result), label)) for result in results]))]
         else:
-            return [Function(var, EqualityFormula(var, ValueFormula(_WikidataItem(result), label))) for result in
+            return [Select(var, EqualityFormula(var, ValueFormula(_WikidataItem(result), label))) for result in
                     results]
 
     @lru_cache(maxsize=8192)
-    def relations_from_labels(self, labels: Iterable[str], language_code: str) -> List[Function[Function[Formula]]]:
+    def relations_from_labels(self, labels: Iterable[str], language_code: str) -> List[Select]:
         if language_code not in self._relations_for_label:
             self._fill_relations_for_label(language_code)
 
@@ -487,7 +474,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
             mapping[label] = [relation]
         self._relations_for_label[language_code] = mapping
 
-    def type_relations(self) -> List[Function[Function[Formula]]]:
+    def type_relations(self) -> List[Select]:
         return _type_relations
 
     @staticmethod
@@ -511,7 +498,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
     def has_results(self, term: Term) -> bool:
         # We build an ask query
         i = 0
-        while isinstance(term, Function):
+        while isinstance(term, Select):
             term = term(VariableFormula('expected{}'.format(i)))
             i += 1
         result = self._execute_sparql_query(self._sparql_builder.build(term, False, False))

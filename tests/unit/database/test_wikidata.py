@@ -21,7 +21,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import unittest
 from decimal import Decimal
 
-from platypus_qa.database.formula import Function, VariableFormula, EqualityFormula, ValueFormula, TripleFormula, \
+from platypus_qa.database.formula import Select, VariableFormula, EqualityFormula, ValueFormula, TripleFormula, \
     ExistsFormula
 from platypus_qa.database.owl import RDFLangStringLiteral, XSDDecimalLiteral, XSDIntegerLiteral, rdf_langString, \
     DatatypeProperty, xsd_decimal, ObjectProperty, owl_NamedIndividual
@@ -42,40 +42,40 @@ _P4 = ValueFormula(DatatypeProperty('http://www.wikidata.org/prop/direct/P4', ow
 _sparql_to_tree_without_context = [
     (
         'SELECT DISTINCT ?r WHERE {\n\tBIND(wd:Q2 AS ?r)\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, EqualityFormula(_x, _Q2))
+        Select(_x, EqualityFormula(_x, _Q2))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t{\n\t\tBIND("foo"@fr AS ?r)\n\t} UNION {\n\t\tBIND(wd:Q2 AS ?r)\n\t}\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, EqualityFormula(_x, _foo) | EqualityFormula(_x, _Q2))
+        Select(_x, EqualityFormula(_x, _foo) | EqualityFormula(_x, _Q2))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t?r wdt:P2 wd:Q2 .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_x, _P2, _Q2))
+        Select(_x, TripleFormula(_x, _P2, _Q2))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\twd:Q2 wdt:P2 ?r .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_Q2, _P2, _x))
+        Select(_x, TripleFormula(_Q2, _P2, _x))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t?r wdt:P3 "foo"@fr .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_x, _P3, _foo))
+        Select(_x, TripleFormula(_x, _P3, _foo))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t{\n\t\twd:Q2 wdt:P2 ?r .\n\t} UNION {\n\t\twd:Q2 wdt:P3 ?r .\n\t}\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_Q2, _P2, _x) | TripleFormula(_Q2, _P3, _x))
+        Select(_x, TripleFormula(_Q2, _P2, _x) | TripleFormula(_Q2, _P3, _x))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t{\n\t\twd:Q2 wdt:P2 ?r .\n\t} UNION {\n\t\twd:Q2 wdt:P3 ?r .\n\t}\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, ExistsFormula(_y, (TripleFormula(_y, _P2, _x) | TripleFormula(_y, _P3, _x)) &
-                                   EqualityFormula(_y, _Q2)))
+        Select(_x, ExistsFormula(_y, (TripleFormula(_y, _P2, _x) | TripleFormula(_y, _P3, _x)) &
+                                 EqualityFormula(_y, _Q2)))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\tFILTER(?r = ((2. * ?y) - 1))\n\twd:Q2 wdt:P4 ?y .\n} LIMIT 100',
-        Function(_x, ExistsFormula(_y, TripleFormula(_Q2, _P4, _y) & EqualityFormula(_x, _2 * _y - _1)))
+        Select(_x, ExistsFormula(_y, TripleFormula(_Q2, _P4, _y) & EqualityFormula(_x, _2 * _y - _1)))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\tFILTER(?y < ?z)\n\twd:Q2 wdt:P4 ?y .\n\twd:Q3 wdt:P4 ?z .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, ExistsFormula(_y, ExistsFormula(_z, TripleFormula(_Q2, _P4, _y) & TripleFormula(_Q3, _P4, _z) & (
+        Select(_x, ExistsFormula(_y, ExistsFormula(_z, TripleFormula(_Q2, _P4, _y) & TripleFormula(_Q3, _P4, _z) & (
             _y < _z))))
     ),
     (
@@ -84,7 +84,7 @@ _sparql_to_tree_without_context = [
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\tBIND(1 AS ?r)\n} LIMIT 100',
-        Function(_x, EqualityFormula(_x, ValueFormula(XSDIntegerLiteral(1))))
+        Select(_x, EqualityFormula(_x, ValueFormula(XSDIntegerLiteral(1))))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\tBIND(1 AS ?r)\n} LIMIT 100',
@@ -95,19 +95,19 @@ _sparql_to_tree_without_context = [
 _sparql_to_tree_with_context = [
     (
         'SELECT DISTINCT ?s ?p ?r WHERE {\n\t?s ?p ?r .\n\tBIND(wd:Q2 AS ?s)\n\tBIND(wdt:P3 AS ?p)\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_Q2, _P3, _x))
+        Select(_x, TripleFormula(_Q2, _P3, _x))
     ),
     (
         'SELECT DISTINCT ?r WHERE {\n\t?r wdt:P3 wd:Q2 .\n\tOPTIONAL { ?r wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, TripleFormula(_x, _P3, _Q2))
+        Select(_x, TripleFormula(_x, _P3, _Q2))
     ),
     (
         'SELECT DISTINCT ?s ?p ?r WHERE {\n\t?s ?p ?r .\n\tBIND(wdt:P3 AS ?p)\n\twd:Q2 wdt:P2 ?s .\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) & TripleFormula(_Q2, _P2, _y)))
+        Select(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) & TripleFormula(_Q2, _P2, _y)))
     ),
     (
         'SELECT DISTINCT ?s ?p ?r WHERE {\n\t{\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P3 AS ?p)\n\t} UNION {\n\t\t?s ?p ?r .\n\t\tBIND(wdt:P4 AS ?p)\n\t}\n\tOPTIONAL { ?s wikibase:sitelinks ?sitelinksCount . }\n} ORDER BY DESC(?sitelinksCount) LIMIT 100',
-        Function(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) | TripleFormula(_y, _P4, _x)))
+        Select(_x, ExistsFormula(_y, TripleFormula(_y, _P3, _x) | TripleFormula(_y, _P4, _x)))
     ),
     (
         'ASK {\n\t?x wdt:P3 "foo"@fr .\n}',

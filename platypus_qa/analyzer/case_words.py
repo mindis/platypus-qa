@@ -20,13 +20,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from typing import Callable, Optional, Dict, Iterable
 
-from platypus_qa.database.formula import Function, Formula, VariableFormula, swap_function_arguments, LowerFormula, \
-    ExistsFormula, GreaterFormula
+from platypus_qa.database.formula import Select, VariableFormula, LowerFormula, ExistsFormula, GreaterFormula
 
 
 class CaseWord:
-    def __init__(self, words: str, terms_by_modifiers: Dict[
-        Iterable[str], Callable[[Function[Function[Formula]]], Function[Function[Formula]]]]):
+    def __init__(self, words: str,
+                 terms_by_modifiers: Dict[Iterable[str], Callable[[Select], Select]]):
         self.words = words
         self.terms_by_modifiers = terms_by_modifiers
 
@@ -34,29 +33,27 @@ class CaseWord:
         return self.words
 
 
-def _predicate_subject_term(relation: Function[Function]):
+def _predicate_subject_term(relation: Select):
     return relation
 
 
-def _predicate_object_term(relation: Function[Function]):
-    return swap_function_arguments(relation)
+def _predicate_object_term(relation: Select):
+    return relation.swap_arguments()
 
 
-def _predicate_lower_object_term(relation: Function[Function[Formula]]):
+def _predicate_lower_object_term(relation: Select):
     subject = VariableFormula('subject')
     object = VariableFormula('object')
     lower = VariableFormula('lower')
-    return Function(object,
-                    Function(subject, ExistsFormula(lower, relation(subject)(lower) & LowerFormula(lower, object))))
+    return Select((object, subject), ExistsFormula(lower, relation(subject)(lower) & LowerFormula(lower, object)))
 
 
-def _predicate_greater_object_term(relation: Function[Function[Formula]]):
+def _predicate_greater_object_term(relation: Select):
     subject = VariableFormula('subject')
     object = VariableFormula('object')
     greater = VariableFormula('greater')
-    return Function(object, Function(subject, ExistsFormula(greater,
-                                                            relation(subject)(greater) & GreaterFormula(greater,
-                                                                                                        object))))
+    return Select((object, subject),
+                  ExistsFormula(greater, relation(subject)(greater) & GreaterFormula(greater, object)))
 
 
 _case_words = {

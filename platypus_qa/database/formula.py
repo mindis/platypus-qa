@@ -18,6 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+import logging
 from copy import copy
 from functools import reduce
 from itertools import chain, product
@@ -74,12 +75,149 @@ TODO: Typing does not supports classes and properties.
 
 class Type:
     """
-    Type for term atoms.
+    Type for terms.
     To construct a type from a RDF Class or Datatype use Type.from_entity
     Use classical comparision operators (<,<=,>,>=,=,!=) to compare Types (using inclusion relationship)
     """
-    _top = None
+    _top = {}
     _bottom = None
+
+    @staticmethod
+    def from_entity(entity: Union[Class, Datatype]) -> 'Type':
+        if isinstance(entity, Class):
+            return _AtomicType(((entity,),))
+        elif isinstance(entity, Datatype):
+            return _AtomicType((), ((entity,),))
+        else:
+            raise ValueError('Parameter of Type.from_entity should be a Class or a Datatype')
+
+    @staticmethod
+    def tuple(*types: 'Type') -> 'Type':
+        # we trim the end
+        while len(types) and types[len(types) - 1] == Type.bottom():
+            types = types[:-1]
+
+        if len(types) == 0:
+            return Type.bottom()
+        elif len(types) == 1:
+            return types[0]
+        else:
+            return _TupleType(*types)
+
+    @classmethod
+    def top(cls, arity: int = 1) -> 'Type':
+        if arity not in cls._top:
+            cls._top[arity] = Type.tuple(*(_AtomicType(((),), ((),)) for i in range(arity)))
+        return cls._top[arity]
+
+    @classmethod
+    def bottom(cls) -> 'Type':
+        if cls._bottom is None:
+            cls._bottom = _AtomicType((), ())
+        return cls._bottom
+
+    def __getitem__(self, key: int) -> 'Type':
+        raise NotImplementedError('Type.__getitem__ is not implemented')
+
+    def __len__(self):
+        raise NotImplementedError('Type.__len__ is not implemented')
+
+    def __or__(self, other: 'Type'):
+        raise NotImplementedError('Type.__or__ is not implemented')
+
+    def __and__(self, other: 'Type'):
+        raise NotImplementedError('Type.__and__ is not implemented')
+
+    def __eq__(self, other):
+        raise NotImplementedError('Type.__eq__ is not implemented')
+
+    def __ne__(self, other):
+        raise NotImplementedError('Type.__ne__ is not implemented')
+
+    def __le__(self, other):
+        raise NotImplementedError('Type.__le__ is not implemented')
+
+    def __lt__(self, other):
+        raise NotImplementedError('Type.__lt__ is not implemented')
+
+    def __ge__(self, other):
+        raise NotImplementedError('Type.__ge__ is not implemented')
+
+    def __gt__(self, other):
+        raise NotImplementedError('Type.__gt__ is not implemented')
+
+    def __str__(self):
+        raise NotImplementedError('Type.__str__ is not implemented')
+
+    def __hash__(self) -> int:
+        raise NotImplementedError('Type.__hash__ is not implemented')
+
+
+class _TupleType(Type):
+    def __init__(self, *types: Type):
+        """
+        Do not call directly but only Type.tuples in order to do normalization
+        """
+        self.types = types
+
+    def __getitem__(self, key: int) -> Type:
+        if key < len(self.types):
+            return self.types[key]
+        else:
+            return Type.bottom()
+
+    def __len__(self):
+        return len(self.types)
+
+    def __or__(self, other: Type) -> Type:
+        return _TupleType(*(self[i].__or__(other[i]) for i in range(max(len(self), len(other)))))
+
+    def __and__(self, other: Type) -> Type:
+        return _TupleType(*(self[i].__and__(other[i]) for i in range(max(len(self), len(other)))))
+
+    def __eq__(self, other):
+        other = self._to_type(other)
+        return isinstance(other, _TupleType) and self.types == other.types
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __le__(self, other):
+        other = self._to_type(other)
+        return all(self[i].__le__(other[i]) for i in range(max(len(self), len(other))))
+
+    def __lt__(self, other):
+        other = self._to_type(other)
+        return all(self[i].__lt__(other[i]) for i in range(max(len(self), len(other))))
+
+    def __ge__(self, other):
+        other = self._to_type(other)
+        return all(self[i].__ge__(other[i]) for i in range(max(len(self), len(other))))
+
+    def __gt__(self, other):
+        other = self._to_type(other)
+        return all(self[i].__gt__(other[i]) for i in range(max(len(self), len(other))))
+
+    @staticmethod
+    def _to_type(other):
+        if isinstance(other, Type):
+            return other
+        elif isinstance(other, (Class, Datatype)):
+            return Type.from_entity(other)
+        else:
+            raise ValueError('{} is not a type'.format(other))
+
+    def __str__(self):
+        return '({})'.format(', '.join(str(t) for t in self.types))
+
+    def __hash__(self) -> int:
+        return hash(self.types)
+
+
+class _AtomicType(Type):
+    """
+    Type without arity
+    """
     _set_owl_Nothing = frozenset((owl_Nothing,))
     _set_owl_Thing = frozenset((owl_Thing,))
     _set_rdfs_Literal = frozenset((rdfs_Literal,))
@@ -92,51 +230,22 @@ class Type:
         self._literal = self._simplify_datatype(literal)
 
     @staticmethod
-    def from_entity(entity: Union[Class, Datatype]) -> 'Type':
-        if isinstance(entity, Class):
-            return Type(((entity,),))
-        elif isinstance(entity, Datatype):
-            return Type((), ((entity,),))
-        else:
-            raise ValueError('Parameter of Type.from_entity should be a Class or a Datatype')
-
-    @classmethod
-    def top(cls) -> 'Type':
-        if cls._top is None:
-            cls._top = Type(((),), ((),))
-        return cls._top
-
-    @classmethod
-    def bottom(cls) -> 'Type':
-        if cls._bottom is None:
-            cls._bottom = Type()
-        return cls._bottom
-
-    def __or__(self, other: 'Type'):
-        return Type(chain(self._entity, other._entity), chain(self._literal, other._literal))
-
-    def __and__(self, other: 'Type'):
-        return Type(
-            [chain(*t) for t in product(self._entity, other._entity)],
-            [chain(*t) for t in product(self._literal, other._literal)]
-        )
-
-    @staticmethod
     def _simplify_class(union: Iterable[Iterable[Class]]) -> FrozenSet[FrozenSet[Class]]:
-        present = set(Type._simplify_class_intersection(inter) for inter in union)
+        present = set(_AtomicType._simplify_class_intersection(inter) for inter in union)
         result = frozenset(inter for inter in present
-                           if inter != Type._set_owl_Nothing and
-                           not any(Type._class_intersection_is_in(inter, inter2) and inter != inter2
+                           if inter != _AtomicType._set_owl_Nothing and
+                           not any(_AtomicType._class_intersection_is_in(inter, inter2) and inter != inter2
                                    for inter2 in present))
-        return result if result else frozenset((Type._set_owl_Nothing,))
+        return result if result else frozenset((_AtomicType._set_owl_Nothing,))
 
     @staticmethod
     def _simplify_datatype(union: Iterable[Iterable[Datatype]]) -> FrozenSet[FrozenSet[Datatype]]:
         present = set(
-            inter for inter in (Type._simplify_datatype_intersection(inter) for inter in union) if inter is not None)
+            inter for inter in (_AtomicType._simplify_datatype_intersection(inter) for inter in union) if
+            inter is not None)
         return frozenset(inter for inter in present
                          if inter is not None and
-                         not any(Type._datatype_intersection_is_in(inter, inter2) and inter != inter2
+                         not any(_AtomicType._datatype_intersection_is_in(inter, inter2) and inter != inter2
                                  for inter2 in present))
 
     @staticmethod
@@ -152,7 +261,7 @@ class Type:
         present = set(intersection)
         result = frozenset(class_ for class_ in present
                            if not any(class_2.is_subclass_of(class_) and class_ != class_2 for class_2 in present))
-        return result if len(result) else Type._set_owl_Thing
+        return result if len(result) else _AtomicType._set_owl_Thing
 
     @staticmethod
     def _simplify_datatype_intersection(intersection: Iterable[Datatype]) -> Optional[FrozenSet[Datatype]]:
@@ -160,13 +269,36 @@ class Type:
         result = frozenset(dt for dt in present
                            if not any(dt2.is_restriction_of(dt) and dt != dt2 for dt2 in present))
         if len(result) == 0:
-            return Type._set_rdfs_Literal
+            return _AtomicType._set_rdfs_Literal
         # Intersection of two different datatypes D_1 and D_2 is empty if there is no restriction relation between them.
         return result if len(result) == 1 else None
 
+    def __getitem__(self, key: int) -> 'Type':
+        return self if key == 0 else Type.bottom()
+
+    def __len__(self):
+        return 1
+
+    def __or__(self, other: Type) -> Type:
+        if isinstance(other, _AtomicType):
+            return _AtomicType(chain(self._entity, other._entity), chain(self._literal, other._literal))
+        else:
+            return other.__or__(self)
+
+    def __and__(self, other: Type) -> Type:
+        if isinstance(other, _AtomicType):
+            return _AtomicType(
+                [chain(*t) for t in product(self._entity, other._entity)],
+                [chain(*t) for t in product(self._literal, other._literal)]
+            )
+        else:
+            return other.__and__(self)
+
     def __eq__(self, other):
         other = self._to_type(other)
-        return self._entity == other._entity and self._literal == other._literal
+        if isinstance(other, _AtomicType):
+            return self._entity == other._entity and self._literal == other._literal
+        return False
 
     def __ne__(self, other):
         return not (self == other)
@@ -211,7 +343,7 @@ _calendar_type = Type.from_entity(platypus_calendar)
 _duration_type = Type.from_entity(xsd_duration)
 
 
-class TypeForVariables(dict):
+class _TypeForVariables(dict):
     def __missing__(self, key: 'VariableFormula') -> Type:
         return Type.top()
 
@@ -219,13 +351,13 @@ class TypeForVariables(dict):
         if key in self:
             super().__delitem__(key)
 
-    def __and__(self, other: 'TypeForVariables'):
+    def __and__(self, other: '_TypeForVariables'):
         result = copy(self)
         for variable, type_ in other.items():
             result[variable] &= type_
         return result
 
-    def __or__(self, other: 'TypeForVariables'):
+    def __or__(self, other: '_TypeForVariables'):
         result = copy(self)
         for variable, type_ in other.items():
             result[variable] |= type_
@@ -236,11 +368,9 @@ class TypeForVariables(dict):
 
 
 class Term:
-    def substitute(self, var: 'VariableFormula', formula: 'Formula') -> 'Term':
-        """
-        Substitutes var by term in the expression
-        """
-        raise NotImplementedError('Term.substitute is not implemented')
+    @property
+    def type(self) -> Type:
+        raise NotImplementedError('Term.type is not implemented')
 
     @property
     def score(self) -> int:
@@ -250,11 +380,17 @@ class Term:
     def original_str(self) -> Optional[str]:
         return None
 
-    def _variables_types(self) -> TypeForVariables:
+    def substitute(self, var: 'VariableFormula', formula: 'Formula') -> 'Term':
+        """
+        Substitutes var by term in the expression
+        """
+        raise NotImplementedError('Term.substitute is not implemented')
+
+    def _variables_types(self) -> _TypeForVariables:
         """
         Returns a type for each free variable
         """
-        return TypeForVariables()
+        return _TypeForVariables()
 
     def explore(self, function: Callable[['Term'], Any]):
         function(self)
@@ -271,12 +407,17 @@ class Term:
     def __bool__(self) -> bool:
         raise ValueError('Term.__bool__ is not implemented')
 
+    def __getitem__(self, key) -> 'Term':
+        """
+        Get an element in the tuple
+        """
+        raise NotImplementedError('Term.__getitem__ is not implemented')
+
+    def __len__(self):
+        raise NotImplementedError('Term.__len__ is not implemented')
+
 
 class Formula(Term):
-    @property
-    def type(self) -> Type:
-        raise NotImplementedError('Formula.type is not implemented')
-
     def __bool__(self) -> bool:
         return True  # Currently the only false formula is the formula "⊥"
 
@@ -312,6 +453,14 @@ class Formula(Term):
 
     def __le__(self, other: 'Formula') -> 'Formula':
         return LowerOrEqualFormula(self, other)
+
+    def __getitem__(self, key: int) -> Term:
+        if key != 0:
+            raise IndexError('Formula has only one member')
+        return self
+
+    def __len__(self):
+        return 1
 
 
 class VariableFormula(Formula):
@@ -402,7 +551,7 @@ class BinaryArithmeticOperatorFormula(Formula):
             self.right.substitute(var, formula)
         )
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         # TODO: What if we uses these operators on other things than arithmetic values?
         result = self.left._variables_types() & self.right._variables_types()
         if isinstance(self.left, VariableFormula):
@@ -508,7 +657,7 @@ class AndFormula(Formula):
     def score(self) -> int:
         return max(arg.score for arg in self.args)
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         return reduce(lambda a, b: a & b, (arg._variables_types() for arg in self.args))
 
     def explore(self, function: Callable[[Term], Any]):
@@ -569,7 +718,7 @@ class OrFormula(Formula):
     def score(self) -> int:
         return max(arg.score for arg in self.args)
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         return reduce(lambda a, b: a | b, (arg._variables_types() for arg in self.args))
 
     def explore(self, function: Callable[[Term], Any]):
@@ -655,7 +804,7 @@ class EqualityFormula(Formula):
     def score(self) -> int:
         return max(self.left.score, self.right.score)
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         result = self.left._variables_types() & self.right._variables_types()
         if isinstance(self.left, VariableFormula):
             result[self.left] &= self.right.type
@@ -695,7 +844,7 @@ class BinaryOrderOperatorFormula(Formula):
             self.right.substitute(var, formula)
         )
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         # Only literals has an order and they should be compatible (i.e. has the same broad type)
         result = self.left._variables_types() & self.right._variables_types()
         operand_type = self._get_type_for_ordering(self.left) & self._get_type_for_ordering(self.right)
@@ -803,7 +952,7 @@ class ExistsFormula(Formula):
     def score(self) -> int:
         return self.body.score
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         body_types = copy(self.body._variables_types())
         del body_types[self.argument]  # shadowing
         return body_types
@@ -845,8 +994,8 @@ class TripleFormula(Formula):
     def score(self) -> int:
         return max(self.subject.score, self.object.score)
 
-    def _variables_types(self) -> TypeForVariables:
-        result = TypeForVariables()
+    def _variables_types(self) -> _TypeForVariables:
+        result = _TypeForVariables()
         if isinstance(self.predicate, ValueFormula):
             if isinstance(self.predicate.term, Property):
                 if isinstance(self.subject, VariableFormula):
@@ -875,51 +1024,139 @@ class TripleFormula(Formula):
         return hash(self.subject) ^ hash(self.predicate) ^ hash(self.object)
 
 
+class Tuple(Term):
+    def __new__(cls, *elements):
+        if len(elements) == 1:
+            return elements[0]
+        else:
+            return super(Tuple, cls).__new__(cls)
+
+    def __init__(self, *elements):
+        self._elements = elements
+
+    @property
+    def type(self) -> Type:
+        return Type.tuple(*(e.type for e in self._elements))
+
+    @property
+    def score(self) -> int:
+        return max(e.score for e in self._elements)
+
+    def substitute(self, var: VariableFormula, formula: Formula) -> Term:
+        return Tuple(*(e.substitute(var, formula) for e in self._elements))
+
+    def _variables_types(self) -> _TypeForVariables:
+        return reduce(lambda a, b: a | b, (e._variables_types() for e in self._elements))
+
+    def explore(self, function: Callable[[Term], Any]):
+        function(self)
+        for e in self._elements:
+            e.explore(function)
+
+    def __str__(self) -> str:
+        return '({})'.format(', '.join(str(e) for e in self._elements))
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Tuple):
+            return False
+        return self._elements == other._elements
+
+    def __hash__(self) -> int:
+        return hash(self._elements)
+
+    def __bool__(self) -> bool:
+        return all(bool(e) for e in self._elements)
+
+    def __getitem__(self, key: int) -> Term:
+        return self._elements[key]
+
+    def __len__(self):
+        return len(self._elements)
+
+
 T = TypeVar('T')
 
 
-class Function(Term, Generic[T]):
-    def __init__(self, argument: VariableFormula, body: T):
-        self.argument = argument
+class Select(Term, Generic[T]):
+    def __init__(self, args: Union[VariableFormula, Iterable[VariableFormula]], body: Formula):
+        if isinstance(args, VariableFormula):
+            self.args = args,
+        else:
+            self.args = tuple(args)
+        if isinstance(body, Select):
+            logging.getLogger('formula').warning('Nested select is deprecated', DeprecationWarning)
+            self.args += body.args
+            body = body.body
         self.body = body
 
-    def substitute(self, var: VariableFormula, term: Term) -> 'Function[T]':
-        if var == self.argument:
+    def substitute(self, var: VariableFormula, formula: Formula) -> 'Select':
+        if var in self.args:
             return self  # Variable shadowing
-        return Function(self.argument, self.body.substitute(var, term))
-
-    @property
-    def argument_type(self) -> Type:
-        return self.body._variables_types()[self.argument]
+        return Select(self.args, self.body.substitute(var, formula))
 
     @property
     def score(self) -> int:
         return self.body.score
 
-    def _variables_types(self) -> TypeForVariables:
+    def _variables_types(self) -> _TypeForVariables:
         body_types = copy(self.body._variables_types())
-        del body_types[self.argument]  # shadowing
+        for arg in self.args:
+            del body_types[arg]  # shadowing
         return body_types
 
     def explore(self, function: Callable[[Term], Any]):
         function(self)
         self.body.explore(function)
 
-    def __call__(self, value: Term) -> T:
-        return self.body.substitute(self.argument, value)
+    @property
+    def type(self) -> Type:
+        body_types = self.body._variables_types()
+        return Type.tuple(*(body_types[arg] for arg in self.args))
+
+    def bind(self, key: int, value: Term) -> 'Union[Formula,Select]':
+        """
+        Binds the first variable
+        """
+        if len(self.args) == 1:
+            return self.body.substitute(self.args[0], value)
+        else:
+            return Select(self.args[1:], self.body.substitute(self.args[0], value))
+
+    def __call__(self, value: Term) -> 'Union[Formula,Select]':
+        """
+        Binds the first variable
+        """
+        return self.bind(0, value)
 
     def __str__(self):
-        return 'λ {} . {} '.format(self.argument, self.body)
+        return '{' + ' {} | {} '.format(', '.join(str(arg) for arg in self.args), self.body) + '}'
 
     def __bool__(self) -> bool:
         return bool(self.body)
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, Function) and self.body == other.body.substitute(other.argument, self.argument)
+        if not isinstance(other, Select):
+            return False
+        if len(self.args) != len(other.args):
+            return False
+        normalize_body = other.body
+        for i in range(len(self.args)):
+            normalize_body = normalize_body.substitute(other.args[i], self.args[i])
+        return isinstance(other, Select) and self.body == normalize_body
+
+    def __len__(self):
+        return len(self.args)
+
+    def __getitem__(self, key: int) -> Term:
+        """
+        Does projection on the key-iest variable. TODO: is it the right behaviour?
+        """
+        return Select([self.args[key]], self.body)
 
     def __hash__(self) -> int:
         return hash(self.body) * 8 + 4
 
-
-def swap_function_arguments(relation: Function[Function[T]]) -> Function[Function[T]]:
-    return Function(relation.body.argument, Function(relation.argument, relation.body.body))
+    def swap_arguments(self, key1: int = 0, key2: int = 1) -> 'Select':
+        args = list(self.args)
+        args[key1], args[key2] = args[key2], args[key1]
+        return Select(args, self.body)

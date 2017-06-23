@@ -24,7 +24,7 @@ import unittest
 from itertools import chain
 
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
-from platypus_qa.database.formula import Function, VariableFormula, ValueFormula, EqualityFormula, TripleFormula
+from platypus_qa.database.formula import Select, VariableFormula, ValueFormula, EqualityFormula, TripleFormula
 from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, owl_NamedIndividual, Class, NamedIndividual, \
     schema_Person, schema_Place
 from platypus_qa.nlp.core_nlp import CoreNLPParser
@@ -73,16 +73,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 _parsed_sentences = {
     'Barack Obama':
-        Function(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
 
     'Der Bob Marley?':
-        Function(_x, EqualityFormula(_x, _get_individual('Bob Marley'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Bob Marley'))),
 
     'Wer ist Barack Obama?':
-        Function(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
 
     'Töchter von Barack Obama':
-        Function(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('Töchter'), _x))
+        Select(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('Töchter'), _x))
 }
 
 

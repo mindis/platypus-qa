@@ -24,7 +24,7 @@ import unittest
 from itertools import chain
 
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
-from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
+from platypus_qa.database.formula import Select, VariableFormula, TripleFormula, ValueFormula, EqualityFormula, \
     ExistsFormula
 from platypus_qa.database.owl import ObjectProperty, DatatypeProperty, owl_NamedIndividual, Class, NamedIndividual, \
     xsd_dateTime, xsd_decimal, XSDDateTimeLiteral, schema_Person, schema_Place, geo_wktLiteral
@@ -114,75 +114,75 @@ logging.basicConfig(level=logging.DEBUG)
 
 _parsed_sentences = {
     'Barack Obama':
-        Function(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
 
     'El Bob Marley':
-        Function(_x, EqualityFormula(_x, _get_individual('Bob Marley'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Bob Marley'))),
 
     '¿Quién es Barack Obama?':
-        Function(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Barack Obama'))),
 
     'hija de Barack Obama':
-        Function(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('hija'), _x)),
+        Select(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('hija'), _x)),
 
     'El primer ministro de Francia':
-        Function(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
+        Select(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
 
     '¿Quién es el primer ministro de Francia?':
-        Function(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
+        Select(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
 
     '¿Quién es el presidente del Reino Unido':
-        Function(_x, TripleFormula(_get_individual('Reino Unido'), _get_property('presidente'), _x)),
+        Select(_x, TripleFormula(_get_individual('Reino Unido'), _get_property('presidente'), _x)),
 
     '¿Quién es el presidente de Francia?':
-        Function(_x, TripleFormula(_get_individual('Francia'), _get_property('presidente'), _x)),
+        Select(_x, TripleFormula(_get_individual('Francia'), _get_property('presidente'), _x)),
 
     '¿Cuál es la velocidad del guepardo?':
-        Function(_x, TripleFormula(_get_individual('guepardo'), _get_property('velocidad'), _x)),
+        Select(_x, TripleFormula(_get_individual('guepardo'), _get_property('velocidad'), _x)),
 
     '¿Cuáles son los hijos de la esposa de Barack Obama?':
-        Function(_x, ExistsFormula(_y, TripleFormula(_get_individual('Barack Obama'), _get_property('esposa'), _y) &
-                                   TripleFormula(_y, _get_property('hijos'), _x))),
+        Select(_x, ExistsFormula(_y, TripleFormula(_get_individual('Barack Obama'), _get_property('esposa'), _y) &
+                                 TripleFormula(_y, _get_property('hijos'), _x))),
 
     '¿Cuál es el ancho de un guepardo?':
-        Function(_x, TripleFormula(_get_individual('guepardo'), _get_property('ancho'), _x)),
+        Select(_x, TripleFormula(_get_individual('guepardo'), _get_property('ancho'), _x)),
 
     '¿Cuánto es la altura del Big Ben?':
-        Function(_x, TripleFormula(_get_individual('Big Ben'), _get_property('altura'), _x)),
+        Select(_x, TripleFormula(_get_individual('Big Ben'), _get_property('altura'), _x)),
 
     '¿Qué es un tenedor?':
-        Function(_x, EqualityFormula(_x, _get_individual('tenedor'))),
+        Select(_x, EqualityFormula(_x, _get_individual('tenedor'))),
 
     '¿Qué es "I, Robot"?':
-        Function(_x, EqualityFormula(_x, _get_individual('I, Robot'))),
+        Select(_x, EqualityFormula(_x, _get_individual('I, Robot'))),
 
     '¿Qué es Robin Hood?':
-        Function(_x, EqualityFormula(_x, _get_individual('Robin Hood'))),
+        Select(_x, EqualityFormula(_x, _get_individual('Robin Hood'))),
 
     'Daños el primer ministro de Francia.':
-        Function(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
+        Select(_x, TripleFormula(_get_individual('Francia'), _get_property('primer ministro'), _x)),
 
     'libros de Barack Obama':
-        Function(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('libros'), _x)),
+        Select(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('libros'), _x)),
 
     'Lista de libros de Barack Obama':
-        Function(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('libros'), _x)),
+        Select(_x, TripleFormula(_get_individual('Barack Obama'), _get_property('libros'), _x)),
 
     '¿Cuál es la ubicación de Big Ben?':
-        Function(_x, TripleFormula(_get_individual('Big Ben'), _get_property('ubicación'), _x)),
+        Select(_x, TripleFormula(_get_individual('Big Ben'), _get_property('ubicación'), _x)),
 
     '¿Dónde está el Big Ben?':
-        Function(_x, TripleFormula(_get_individual('Big Ben'), _get_property('ubicación'), _x)),
+        Select(_x, TripleFormula(_get_individual('Big Ben'), _get_property('ubicación'), _x)),
 
     '¿Dónde está Lyon?':
-        Function(_x, TripleFormula(_get_individual('Lyon'), _get_property('ubicación'), _x)),
+        Select(_x, TripleFormula(_get_individual('Lyon'), _get_property('ubicación'), _x)),
 
     '¿Dónde está Paris?':
-        Function(_x, TripleFormula(_get_individual('Paris'), _get_property('ubicación'), _x)),
+        Select(_x, TripleFormula(_get_individual('Paris'), _get_property('ubicación'), _x)),
 
     '¿Quién nació en 1960?':
-        Function(_x,
-                 TripleFormula(_x, _get_property('nació en'), ValueFormula(XSDDateTimeLiteral(1960, 0, 0, 0, 0, 0))))
+        Select(_x,
+               TripleFormula(_x, _get_property('nació en'), ValueFormula(XSDDateTimeLiteral(1960, 0, 0, 0, 0, 0))))
 }
 
 """

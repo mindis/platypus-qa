@@ -20,8 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from typing import List, Dict
 
-from platypus_qa.database.formula import Function, VariableFormula, TripleFormula, ValueFormula, Formula, \
-    EqualityFormula
+from platypus_qa.database.formula import Select, VariableFormula, TripleFormula, ValueFormula, EqualityFormula
 from platypus_qa.database.model import KnowledgeBase
 from platypus_qa.database.owl import Property, NamedIndividual, owl_Thing, Class
 
@@ -36,20 +35,19 @@ class SimpleKnowledgeBase(KnowledgeBase):
         self._properties_by_label = properties_by_label
         self._type_properties = type_properties
 
-    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[
-        Function[Formula]]:
+    def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[Select]:
         if label not in self._individuals_by_label:
             return []
         individuals = self._individuals_by_label[label]
         if type_filter != owl_Thing:
             individuals = [individual for individual in individuals if type in individual.types]
-        return [Function(_s, EqualityFormula(_s, ValueFormula(individual, label))) for individual in individuals]
+        return [Select(_s, EqualityFormula(_s, ValueFormula(individual, label))) for individual in individuals]
 
-    def relations_from_label(self, label: str, language_code: str) -> List[Function[Function[Formula]]]:
+    def relations_from_label(self, label: str, language_code: str) -> List[Select]:
         if label not in self._properties_by_label:
             return []
-        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p, label), _o))) for p in
+        return [Select((_s, _o), TripleFormula(_s, ValueFormula(p, label), _o)) for p in
                 self._properties_by_label[label]]
 
-    def type_relations(self) -> List[Function[Function[Formula]]]:
-        return [Function(_s, Function(_o, TripleFormula(_s, ValueFormula(p), _o))) for p in self._type_properties]
+    def type_relations(self) -> List[Select]:
+        return [Select((_s, _o), TripleFormula(_s, ValueFormula(p), _o)) for p in self._type_properties]
