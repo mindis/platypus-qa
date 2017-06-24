@@ -30,11 +30,11 @@ from pyld import jsonld
 from sympy import latex
 from werkzeug.exceptions import NotFound
 
+from platypus_qa import FormatterError, WikidataKnowledgeBase, QAHandler
 from platypus_qa.analyzer.disambiguation import DisambiguationStep, find_process
 from platypus_qa.database.formula import Term, ValueFormula
-from platypus_qa.database.wikidata import WikidataKnowledgeBase
 from platypus_qa.logs import DictLogger
-from platypus_qa.qa import QAHandler, safe_limited_response_builder, LazyThreadPoolExecutor
+from platypus_qa.qa import safe_limited_response_builder, LazyThreadPoolExecutor
 
 _logger = logging.getLogger('request_handler')
 
@@ -90,11 +90,14 @@ class RequestHandler:
                     if result.result in existing_results:
                         continue
                     existing_results.add(result.result)
-                    results.append({
-                        'result': self._qa_handler.to_json_ld(result, accept_language),
-                        'resultScore': interpretation.interpretation.score / 100,
-                        'platypus:term': str(interpretation.interpretation)
-                    })
+                    try:
+                        results.append({
+                            'result': self._qa_handler.to_json_ld(result, accept_language),
+                            'resultScore': interpretation.interpretation.score / 100,
+                            'platypus:term': str(interpretation.interpretation)
+                        })
+                    except FormatterError as e:
+                        _logger.warning(e)
 
         self._request_logger.log({
             'question': question,

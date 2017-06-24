@@ -149,5 +149,6 @@ class QAHandler:
         :param result:
         :param accept_language: language to format the result in
         :return: JSON-LD formatting
+        :raise FormatterError
         """
         return self._knowledge_base.format_to_jsonld(result, accept_language)
