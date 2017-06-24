@@ -28,7 +28,7 @@ import langdetect
 
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term
-from platypus_qa.database.model import KnowledgeBase, QAInterpretation, QAInterpretationResult
+from platypus_qa.database.model import KnowledgeBase, QAInterpretation, QAInterpretationResult, EvaluationError
 from platypus_qa.nlp.model import NLPParser
 
 _logger = logging.getLogger('request_handler')
@@ -125,19 +125,23 @@ class QAHandler:
         parsed_terms = list(sorted(parsed_terms, key=lambda term: -term.score))
 
         with LazyThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(self._knowledge_base.evaluate_term, term) for term in parsed_terms]
+            futures = [executor.submit(self._knowledge_base.build_interpretation, term) for term in parsed_terms]
             interpretations = []
             max_score = 0
-            for i in range(len(parsed_terms)):
-                term = parsed_terms[i]
-                if term.score < max_score and not self._all_interpretations:
-                    return interpretations
+            for future in futures:
+                try:
+                    interpretation = future.result()
 
-                query_results = futures[i].result()
-                if query_results:
-                    max_score = term.score
-                    interpretations.append(QAInterpretation(
-                        term, [QAInterpretationResult(result) for result in query_results]))
+                    if not self._all_interpretations:
+                        if interpretation.interpretation.score < max_score:
+                            return interpretations
+                        if interpretation.results:
+                            max_score = interpretation.interpretation.score
+
+                    interpretations.append(interpretation)
+                except EvaluationError as e:
+                    _logger.warning(e)
+
             return interpretations
 
     def to_json_ld(self, result: QAInterpretationResult, accept_language: str) -> Dict:

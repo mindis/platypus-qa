@@ -155,7 +155,9 @@ class SimpleWikidataSparqlHandler:
             raise NotFound('Not able to build a good SPARQL question for the {} question "{}"'.format(
                 language_code, question))
         return current_app.response_class(
-            self._knowledge_base.build_sparql(interpretations[0].interpretation), mimetype='application/sparql-query')
+            self._knowledge_base.build_sparql(
+                self._knowledge_base.normalize_for_sparql(interpretations[0].interpretation)),
+            mimetype='application/sparql-query')
 
 
 class DisambiguatedWikidataSparqlHandler:
@@ -200,7 +202,7 @@ class DisambiguatedWikidataSparqlHandler:
         elif isinstance(disambiguation_tree, Iterable):
             # TODO: tous les retourner ?
             execution_result = executor.map_first_with_result(
-                lambda term: self._knowledge_base.build_sparql(term)
+                lambda term: self._knowledge_base.build_sparql(self._knowledge_base.normalize_for_sparql(term))
                 if self._knowledge_base.has_results(term) else None,
                 ((term,) for term in sorted(disambiguation_tree, key=lambda term: -term.score)),
                 bool,

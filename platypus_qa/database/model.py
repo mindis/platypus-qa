@@ -18,15 +18,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 from itertools import chain
-from typing import List, Union, Iterable
+from typing import List, Union, Iterable, Optional, Tuple
 
-from platypus_qa.database.formula import Term, Select
-from platypus_qa.database.owl import Literal, Class, owl_Thing, Entity
+from platypus_qa.database.formula import Term, Select, Tuple, VariableFormula, TripleFormula, AndFormula, OrFormula, \
+    ExistsFormula, EqualityFormula
+from platypus_qa.database.owl import Literal, Class, owl_Thing, Entity, Property
 
 
 class QAInterpretationResult:
-    def __init__(self, result: Union[Entity, Literal]):
+    def __init__(self, result: Union[Entity, Literal],
+                 context_subject: Optional[Entity] = None, context_predicate: Optional[Property] = None):
         self.result = result
+        self.context_subject = context_subject
+        self.context_predicate = context_predicate
 
 
 class QAInterpretation:
@@ -36,6 +40,10 @@ class QAInterpretation:
 
 
 class FormatterError(Exception):
+    pass
+
+
+class EvaluationError(Exception):
     pass
 
 
@@ -62,8 +70,75 @@ class KnowledgeBase:
         """
         raise NotImplementedError("KnowledgeBase.type_properties is not implemented")
 
-    def evaluate_term(self, term: Term) -> List[Union[Entity, Literal]]:
+    def evaluate_term(self, term: Term) -> List[Tuple]:
+        """
+        :raise EvaluationError
+        """
         raise NotImplementedError("KnowledgeBase.evaluate_term is not implemented")
+
+    def build_interpretation(self, term: Term) -> QAInterpretation:
+        """
+        :raise EvaluationError
+        """
+        results = self.evaluate_term(self._add_context_variables(term))
+        return QAInterpretation(term, [self._tuple_to_result(result) for result in results])
+
+    @staticmethod
+    def _add_context_variables(term: Term) -> Term:
+        if not isinstance(term, Select):
+            return term
+
+        result = term.args[0]
+        subject_var = VariableFormula('s')
+        predicate_var = VariableFormula('p')
+
+        def explore(term: Term):
+            if isinstance(term, TripleFormula):
+                if term.object == result:
+                    return TripleFormula(subject_var, predicate_var, result) & \
+                           EqualityFormula(subject_var, term.subject) & EqualityFormula(predicate_var, term.predicate), \
+                           True
+                return term, False
+            elif isinstance(term, AndFormula):
+                found = False
+                modified = []
+                for arg in term.args:
+                    if found:
+                        modified.append(arg)  # The value is already set, we do not modify anything
+                    else:
+                        arg, found_ = explore(arg)
+                        modified.append(arg)
+                        found = found or found_
+                return AndFormula(modified), found
+            elif isinstance(term, OrFormula):
+                modified = []
+                found = False
+                for arg in term.args:
+                    arg, found_ = explore(arg)
+                    modified.append(arg)
+                    found = found or found_
+                return OrFormula(modified), found
+            elif isinstance(term, ExistsFormula):
+                out, found = explore(term.body)
+                return ExistsFormula(term.argument, out), found
+            else:
+                return term, False
+
+        body, found = explore(term.body)
+
+        if found:
+            return Select((subject_var, predicate_var, result), body)
+        else:
+            return term
+
+    @staticmethod
+    def _tuple_to_result(result: Tuple) -> QAInterpretationResult:
+        if len(result) == 1:
+            return QAInterpretationResult(result[0])
+        elif len(result) == 3:
+            return QAInterpretationResult(result[2], result[1], result[0])
+        else:
+            raise EvaluationError('Unexepcted result tuple: {}'.format(result))
 
     def format_to_jsonld(self, result: QAInterpretationResult,
                          accept_language: str) -> dict:  # TODO: one or two methods?

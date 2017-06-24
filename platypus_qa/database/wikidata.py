@@ -32,12 +32,11 @@ from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, Eq
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
     BinaryArithmeticOperatorFormula, Type
-from platypus_qa.database.model import KnowledgeBase, FormatterError, QAInterpretationResult
+from platypus_qa.database.model import KnowledgeBase, FormatterError, QAInterpretationResult, EvaluationError
 from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
-    XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, \
-    XSDDateLiteral, XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
-    xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean, \
-    xsd_integer, Datatype, Property
+    XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, xsd_integer, Datatype, Property, XSDDateLiteral, \
+    XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
+    xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean
 
 _logger = logging.getLogger('wikidata')
 
@@ -94,9 +93,7 @@ class _WikidataItem(NamedIndividual):
 
 
 class _WikidataQuerySparqlBuilder:
-    def build(self, term: Term, retrieve_context=False, do_ranking=True) -> str:
-        term = self._prepare_term(term, retrieve_context)
-
+    def build(self, term: Term, do_ranking=True) -> str:
         if isinstance(term, Select):
             clauses = self._build_internal(term.body).replace('\n', '\n\t')
 
@@ -112,65 +109,7 @@ class _WikidataQuerySparqlBuilder:
             if term.type <= Type.from_entity(xsd_boolean):
                 return 'ASK {{\n\t{}\n}}'.format(self._build_internal(term))
 
-        raise ValueError('Root term not supported by SPARQL builder {}'.format(term))
-
-    def _prepare_term(self, term: Term, retrieve_context=False) -> Term:
-        result = VariableFormula('r')
-        if isinstance(term, Select):
-            term = Select(result, term(result))
-        elif isinstance(term, Formula):
-            if not (term.type <= Type.from_entity(xsd_boolean)):
-                term = Select(result, EqualityFormula(result, term))
-        if retrieve_context:
-            term = self._add_context_variable(term)
-        return term
-
-    def _add_context_variable(self, term: Term) -> Term:
-        if not isinstance(term, Select):
-            return term
-
-        result = term.args[0]
-        subject_var = VariableFormula('s')
-        predicate_var = VariableFormula('p')
-
-        def explore(term: Term) -> Tuple[Term, bool]:
-            if isinstance(term, TripleFormula):
-                if term.object == result:
-                    return TripleFormula(subject_var, predicate_var, result) & \
-                           EqualityFormula(subject_var, term.subject) & EqualityFormula(predicate_var, term.predicate), \
-                           True
-                return term, False
-            elif isinstance(term, AndFormula):
-                found = False
-                modified = []
-                for arg in term.args:
-                    if found:
-                        modified.append(arg)  # The value is already set, we do not modify anything
-                    else:
-                        arg, found_ = explore(arg)
-                        modified.append(arg)
-                        found = found or found_
-                return AndFormula(modified), found
-            elif isinstance(term, OrFormula):
-                modified = []
-                found = False
-                for arg in term.args:
-                    arg, found_ = explore(arg)
-                    modified.append(arg)
-                    found = found or found_
-                return OrFormula(modified), found
-            elif isinstance(term, ExistsFormula):
-                out, found = explore(term.body)
-                return ExistsFormula(term.argument, out), found
-            else:
-                return term, False
-
-        body, found = explore(term.body)
-
-        if found:
-            return Select((subject_var, predicate_var, result), body)
-        else:
-            return term
+        raise EvaluationError('Root term not supported by SPARQL builder {}'.format(term))
 
     def _build_internal(self, term: Term) -> str:
         if isinstance(term, OrFormula):
@@ -200,7 +139,7 @@ class _WikidataQuerySparqlBuilder:
             return '{SELECT DISTINCT {} WHERE {{\n\t{}\n}}}'.format(
                 ' '.join(term.args), self._build_internal(term.body).replace('\n', '\n\t'))
         else:
-            raise ValueError('Term not supported by SPARQL builder {}'.format(term))
+            raise EvaluationError('Term not supported by SPARQL builder {}'.format(term))
 
     def _serialize_triple_argument(self, value: Formula) -> str:
         if isinstance(value, ValueFormula):
@@ -208,7 +147,7 @@ class _WikidataQuerySparqlBuilder:
         elif isinstance(value, VariableFormula):
             return str(value)
         else:
-            raise ValueError('Not able to serialize triple argument {}'.format(value))
+            raise EvaluationError('Not able to serialize triple argument {}'.format(value))
 
     def _serialize_expression(self, expr: Formula) -> str:
         if isinstance(expr, ValueFormula):
@@ -240,7 +179,7 @@ class _WikidataQuerySparqlBuilder:
         elif isinstance(expr, LowerOrEqualFormula):
             return '({} <= {})'.format(self._serialize_expression(expr.left), self._serialize_expression(expr.right))
         else:
-            raise ValueError('Not able to serialize expression {}'.format(expr))
+            raise EvaluationError('Not able to serialize expression {}'.format(expr))
 
     def _serialize_rdf_term(self, term: Union[Entity, Literal]) -> str:
         if isinstance(term, Entity):
@@ -492,8 +431,15 @@ class WikidataKnowledgeBase(KnowledgeBase):
             _logger.warning('Unexpected response from Wikidata service: {}'.format(response))
             return []
 
+    def normalize_for_sparql(self, term: Term) -> Term:
+        if isinstance(term, Formula):
+            result = VariableFormula('r')
+            if not (term.type <= Type.from_entity(xsd_boolean)):
+                return Select(result, EqualityFormula(result, term))
+        return term
+
     def build_sparql(self, term: Term) -> str:
-        return self._sparql_builder.build(term, False, False)
+        return self._sparql_builder.build(term, False)
 
     def has_results(self, term: Term) -> bool:
         # We build an ask query
@@ -501,27 +447,27 @@ class WikidataKnowledgeBase(KnowledgeBase):
         while isinstance(term, Select):
             term = term(VariableFormula('expected{}'.format(i)))
             i += 1
-        result = self._execute_sparql_query(self._sparql_builder.build(term, False, False))
+        result = self._execute_sparql_query(self._sparql_builder.build(term, False))
         if 'boolean' in result:
             return bool(result['boolean'])
         else:
             raise ValueError('Unexpected result from Wikidata Query Service {}'.format(result))
 
-    def evaluate_term(self, term: Term) -> List[Union[Entity, Literal]]:
-        query = self._sparql_builder.build(term, retrieve_context=True)
+    def evaluate_term(self, term: Term) -> List[Tuple[Union[Entity, Literal]]]:
+        term = self.normalize_for_sparql(term)
+        query = self._sparql_builder.build(term)
         results = self._execute_sparql_query(query)
+
         if 'results' in results and 'bindings' in results['results']:
-            try:
-                return [result for result in (
-                    self._sparql_result_to_resource_with_context(result) for result in results['results']['bindings']
-                    if 'r' in result) if result is not None]
-            except ValueError:
-                _logger.warning('Invalid result for query: {}'.format(query))
-                return []
+            if isinstance(term, Select):
+                return [tuple(self._sparql_term_to_resource(result[arg.name]) for arg in term.args)
+                        for result in results['results']['bindings']]
+            else:
+                raise EvaluationError('Invalid term: {} for query: {}'.format(term, query))
         elif 'boolean' in results:
-            return [XSDBooleanLiteral(value=results['boolean'])]
+            return [(XSDBooleanLiteral(value=results['boolean']),)]
         else:
-            raise ValueError('Unexpected result from Wikidata Query Service {}'.format(results))
+            raise EvaluationError('Unexpected result from Wikidata Query Service {}'.format(results))
 
     @lru_cache(maxsize=8192)
     def _execute_sparql_query(self, query: str):
@@ -539,20 +485,10 @@ class WikidataKnowledgeBase(KnowledgeBase):
                 'results': {'bindings': []}
             }
 
-    def _sparql_result_to_resource_with_context(self, result) -> Optional[Union[NamedIndividual, Literal]]:
-        resource = self._sparql_result_to_resource(result)
-        if resource is None:
-            return resource
-        if 's' in result and 'p' in result:
-            resource.context_subject = result['s']['value']
-            resource.context_predicate = result['p']['value']
-        return resource
-
     @staticmethod
-    def _sparql_result_to_resource(result) -> Optional[Union[NamedIndividual, Literal]]:
-        term = result['r']
+    def _sparql_term_to_resource(term) -> Union[Entity, Literal]:
         if 'type' not in term:
-            raise ValueError('Invalid term in SPARQL results serialization {}'.format(term))
+            raise EvaluationError('Invalid term in SPARQL results serialization {}'.format(term))
         if term['type'] == 'uri':
             if term['value'].startswith('http://www.wikidata.org/entity/Q'):
                 return _WikidataItem({'@id': term['value']})
@@ -563,10 +499,8 @@ class WikidataKnowledgeBase(KnowledgeBase):
             if isinstance(literal, XSDDateTimeLiteral):
                 literal = WikidataKnowledgeBase._clean_wdqs_datetime(literal)
             return literal
-        elif term['type'] == 'bnode':
-            return None
         else:
-            raise ValueError('Unsupported term in SPARQL results serialization {}'.format(term))
+            raise EvaluationError('Unsupported term in SPARQL results serialization {}'.format(term))
 
     @staticmethod
     def _clean_wdqs_datetime(dateTime: XSDDateTimeLiteral):
@@ -581,8 +515,8 @@ class WikidataKnowledgeBase(KnowledgeBase):
         else:
             raise ValueError('Invalid xsd:dateTime:{}'.format(dateTime))
 
-    def format_to_jsonld(self, result: QAInterpretationResult, accept_language: str) -> dict:
-        value = result.result
+    def format_to_jsonld(self, interpretation_result: QAInterpretationResult, accept_language: str) -> dict:
+        value = interpretation_result.result
         # TODO: instead of using datatypes as @type, use Literal?
         if isinstance(value, Entity):
             result = self._format_entity(value.iri, accept_language)
@@ -616,12 +550,12 @@ class WikidataKnowledgeBase(KnowledgeBase):
         else:
             raise FormatterError('Unexpected value: {}'.format(value))
 
-        if 'context_subject' in value.__dict__ and 'context_predicate' in value.__dict__ and \
-                value.__dict__['context_subject'] and value.__dict__['context_predicate'] in _wikidata_to_schema:
-            result['@reverse'] = {
-                _wikidata_to_schema[value.__dict__['context_predicate']]:
-                    self._format_entity(value.__dict__['context_subject'], accept_language)
-            }
+        if interpretation_result.context_subject is not None and interpretation_result.context_predicate is not None:
+            if interpretation_result.context_predicate.iri in _wikidata_to_schema:
+                result['@reverse'] = {
+                    _wikidata_to_schema[interpretation_result.context_predicate.iri]:
+                        self._format_entity(interpretation_result.context_subject.iri, accept_language)
+                }
         return result
 
     @lru_cache(maxsize=8192)
