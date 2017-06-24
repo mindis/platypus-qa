@@ -84,12 +84,17 @@ class RequestHandler:
         if not results:
             interpretations = self._qa_handler.answer(question, language_code)
             results = []
+            existing_results = set()
             for interpretation in interpretations:
-                results.extend({
-                                   'result': self._qa_handler.to_json_ld(result, accept_language),
-                                   'resultScore': interpretation.interpretation.score / 100,
-                                   'platypus:term': str(interpretation.interpretation)
-                               } for result in interpretation.results)
+                for result in interpretation.results:
+                    if result.result in existing_results:
+                        continue
+                    existing_results.add(result.result)
+                    results.append({
+                        'result': self._qa_handler.to_json_ld(result, accept_language),
+                        'resultScore': interpretation.interpretation.score / 100,
+                        'platypus:term': str(interpretation.interpretation)
+                    })
 
         self._request_logger.log({
             'question': question,
