@@ -336,12 +336,16 @@ class WikidataKnowledgeBase(KnowledgeBase):
     _property_for_iri = {}
 
     def __init__(self, kb_wikidata_uri: str, wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
-                 compacted_individuals=False):
+                 compacted_individuals=False, preload_languages: Iterable[str] = ()):
         self._kb_wikidata_uri = kb_wikidata_uri
         self._wikidata_sparql_endpoint_ui = wikidata_sparql_endpoint_uri
         self._request_session_sparql = requests.Session()
         self._request_session_kb = requests.Session()
         self._compacted_individuals = compacted_individuals
+
+        for language_code in preload_languages:
+            self._fill_relations_for_label(language_code)
+
 
     @lru_cache(maxsize=8192)
     def individuals_from_label(self, label: str, language_code: str, type_filter: Class = owl_Thing) -> List[Select]:

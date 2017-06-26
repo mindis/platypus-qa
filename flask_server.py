@@ -45,8 +45,10 @@ _parsers = [
     CoreNLPParser([app.config['CORE_NLP_URL']]),
     SyntaxNetParser([app.config['SYNTAXNET_URL']])
 ]
-_compacted_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=True)
-_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'], compacted_individuals=False)
+_compacted_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'],
+                                               compacted_individuals=True, preload_languages=SAMPLE_QUESTIONS.keys())
+_wikidata_kb = WikidataKnowledgeBase(app.config['WIKIDATA_KNOWLEDGE_BASE_URL'],
+                                     compacted_individuals=False, preload_languages=SAMPLE_QUESTIONS.keys())
 _simple_wikidata_sparql_handler = SimpleWikidataSparqlHandler(QAHandler(_parsers, _wikidata_kb), _wikidata_kb)
 _disambiguated_wikidata_sparql_handler = DisambiguatedWikidataSparqlHandler(QAHandler(_parsers, _wikidata_kb, True),
                                                                             _wikidata_kb)
