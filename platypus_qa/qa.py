@@ -131,12 +131,13 @@ class QAHandler:
             for future in futures:
                 try:
                     interpretation = future.result()
+                    if not interpretation.results:
+                        continue
 
                     if not self._all_interpretations:
                         if interpretation.interpretation.score < max_score:
                             return interpretations
-                        if interpretation.results:
-                            max_score = interpretation.interpretation.score
+                        max_score = interpretation.interpretation.score
 
                     interpretations.append(interpretation)
                 except EvaluationError as e:
