@@ -27,7 +27,6 @@ from typing import Dict, List, Union, Optional, Tuple, Iterable
 
 import editdistance
 import requests
-
 from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
@@ -334,6 +333,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
     _sparql_builder = _WikidataQuerySparqlBuilder()
     _relations_for_label = {}
     _property_for_iri = {}
+    _label_for_iri = {}
 
     def __init__(self, kb_wikidata_uri: str, wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
                  compacted_individuals=False, preload_languages: Iterable[str] = ()):
@@ -392,11 +392,13 @@ class WikidataKnowledgeBase(KnowledgeBase):
         )
         mapping = {}
         relations = {}
+        labels = {}
         if 'results' in results and 'bindings' in results['results']:
             for result in results['results']['bindings']:
                 property_iri = result['directProperty']['value']
                 property_type = result['propertyType']['value']
                 label = result['label']['value'].lower()
+                labels[property_iri] = result['label']['value']
                 if property_iri not in relations:
                     if property_iri not in self._property_for_iri:
                         if property_type not in _wikibase_property_types:
@@ -413,12 +415,14 @@ class WikidataKnowledgeBase(KnowledgeBase):
                             else:
                                 raise EvaluationError('Unexpected range: {}'.format(property_type))
                     relations[property_iri] = _relation_for_property(self._property_for_iri[property_iri])
-                if label not in mapping:
-                    mapping[label] = []
-                mapping[label].append(relations[property_iri])
+                lower_label = label.lower()
+                if lower_label not in mapping:
+                    mapping[lower_label] = []
+                mapping[lower_label].append(relations[property_iri])
         for label, relation in _hadcoded_relations.get(language_code, {}).items():
             mapping[label] = [relation]
         self._relations_for_label[language_code] = mapping
+        self._label_for_iri[language_code] = labels
 
     def type_relations(self) -> List[Select]:
         return _type_relations
@@ -569,11 +573,11 @@ class WikidataKnowledgeBase(KnowledgeBase):
         return result
 
     @lru_cache(maxsize=8192)
-    def _format_entity(self, iri: str, language_code: str) -> dict:
+    def _format_entity(self, iri: str, accept_language: str) -> dict:
         response = self._request_session_kb.get(self._kb_wikidata_uri + '/entity/' +
                                                 urllib.parse.quote(
                                                     iri.replace('http://www.wikidata.org/entity/', 'wd:'), safe=''),
-                                                headers={'Accept-Language': language_code})
+                                                headers={'Accept-Language': accept_language})
         # TODO: we should not need to reduce URIs
         try:
             return response.json()
@@ -582,3 +586,14 @@ class WikidataKnowledgeBase(KnowledgeBase):
                 'Unexpected {} response for entity {} from Wikidata service: {}'.format(response.status_code, iri,
                                                                                         response.text))
             return {'@id': iri}
+
+    def get_label(self, entity: Entity, accept_language: str) -> Optional[str]:
+        if accept_language in self._label_for_iri and entity.iri in self._label_for_iri[accept_language]:
+            return self._label_for_iri[accept_language][entity.iri]
+        elif isinstance(entity, _WikidataItem):
+            entity = self._format_entity(entity.iri, accept_language)
+            if 'name' in entity:
+                return entity['name']
+        else:
+            _logger.warning('Unknown entity: {}'.format(entity))
+        return None

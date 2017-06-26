@@ -147,3 +147,6 @@ class KnowledgeBase:
         :raise FormatterError
         """
         raise NotImplementedError("KnowledgeBase.format_resource is not implemented")
+
+    def get_label(self, entity: Entity, accept_language: str) -> Optional[str]:
+        raise NotImplementedError("KnowledgeBase.get_label is not implemented")

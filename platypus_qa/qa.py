@@ -22,13 +22,13 @@ import logging
 import signal
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, Optional
 
 import langdetect
-
 from platypus_qa.analyzer.grammatical_analyzer import GrammaticalAnalyzer
 from platypus_qa.database.formula import Term
 from platypus_qa.database.model import KnowledgeBase, QAInterpretation, QAInterpretationResult, EvaluationError
+from platypus_qa.database.owl import Entity
 from platypus_qa.nlp.model import NLPParser
 
 _logger = logging.getLogger('request_handler')
@@ -153,3 +153,6 @@ class QAHandler:
         :raise FormatterError
         """
         return self._knowledge_base.format_to_jsonld(result, accept_language)
+
+    def get_label(self, entity: Entity, accept_language: str) -> Optional[str]:
+        return self._knowledge_base.get_label(entity, accept_language)
