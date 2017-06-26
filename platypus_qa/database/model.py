@@ -136,9 +136,9 @@ class KnowledgeBase:
         if len(result) == 1:
             return QAInterpretationResult(result[0])
         elif len(result) == 3:
-            return QAInterpretationResult(result[2], result[1], result[0])
+            return QAInterpretationResult(result[2], result[0], result[1])
         else:
-            raise EvaluationError('Unexepcted result tuple: {}'.format(result))
+            raise EvaluationError('Unexpected result tuple: {}'.format(result))
 
     def format_to_jsonld(self, result: QAInterpretationResult,
                          accept_language: str) -> dict:  # TODO: one or two methods?

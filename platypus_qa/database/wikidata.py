@@ -333,6 +333,7 @@ _type_relations = [_relation_for_property(p) for p in [
 class WikidataKnowledgeBase(KnowledgeBase):
     _sparql_builder = _WikidataQuerySparqlBuilder()
     _relations_for_label = {}
+    _property_for_iri = {}
 
     def __init__(self, kb_wikidata_uri: str, wikidata_sparql_endpoint_uri: str = 'https://query.wikidata.org/sparql',
                  compacted_individuals=False):
@@ -393,19 +394,21 @@ class WikidataKnowledgeBase(KnowledgeBase):
                 property_type = result['propertyType']['value']
                 label = result['label']['value'].lower()
                 if property_iri not in relations:
-                    if property_type not in _wikibase_property_types:
-                        _logger.warning('Unknown property type: {}'.format(property_type))
-                        continue
-                    else:
-                        property_type = _wikibase_property_types[property_type]
-                        if isinstance(property_type, Class):
-                            relations[property_iri] = _relation_for_property(
-                                ObjectProperty(property_iri, owl_NamedIndividual, property_type))
-                        elif isinstance(property_type, Datatype):
-                            relations[property_iri] = _relation_for_property(
-                                DatatypeProperty(property_iri, owl_NamedIndividual, property_type))
+                    if property_iri not in self._property_for_iri:
+                        if property_type not in _wikibase_property_types:
+                            _logger.warning('Unknown property type: {}'.format(property_type))
+                            continue
                         else:
-                            raise ValueError('Unexpected range: {}'.format(property_type))
+                            property_type = _wikibase_property_types[property_type]
+                            if isinstance(property_type, Class):
+                                self._property_for_iri[property_iri] = \
+                                    ObjectProperty(property_iri, owl_NamedIndividual, property_type)
+                            elif isinstance(property_type, Datatype):
+                                self._property_for_iri[property_iri] = \
+                                    DatatypeProperty(property_iri, owl_NamedIndividual, property_type)
+                            else:
+                                raise EvaluationError('Unexpected range: {}'.format(property_type))
+                    relations[property_iri] = _relation_for_property(self._property_for_iri[property_iri])
                 if label not in mapping:
                     mapping[label] = []
                 mapping[label].append(relations[property_iri])
@@ -451,7 +454,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
         if 'boolean' in result:
             return bool(result['boolean'])
         else:
-            raise ValueError('Unexpected result from Wikidata Query Service {}'.format(result))
+            raise EvaluationError('Unexpected result from Wikidata Query Service {}'.format(result))
 
     def evaluate_term(self, term: Term) -> List[Tuple[Union[Entity, Literal]]]:
         term = self.normalize_for_sparql(term)
@@ -485,13 +488,14 @@ class WikidataKnowledgeBase(KnowledgeBase):
                 'results': {'bindings': []}
             }
 
-    @staticmethod
-    def _sparql_term_to_resource(term) -> Union[Entity, Literal]:
+    def _sparql_term_to_resource(self, term) -> Union[Entity, Literal]:
         if 'type' not in term:
             raise EvaluationError('Invalid term in SPARQL results serialization {}'.format(term))
         if term['type'] == 'uri':
             if term['value'].startswith('http://www.wikidata.org/entity/Q'):
                 return _WikidataItem({'@id': term['value']})
+            elif term['value'] in self._property_for_iri:
+                return self._property_for_iri[term['value']]
             else:
                 return XSDAnyURILiteral(term['value'])
         elif term['type'] == 'literal':
@@ -513,7 +517,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
         elif dateTime.year != 0:
             return XSDGYearLiteral(dateTime.year, dateTime.timezone_offset)
         else:
-            raise ValueError('Invalid xsd:dateTime:{}'.format(dateTime))
+            raise EvaluationError('Invalid xsd:dateTime:{}'.format(dateTime))
 
     def format_to_jsonld(self, interpretation_result: QAInterpretationResult, accept_language: str) -> dict:
         value = interpretation_result.result
@@ -534,7 +538,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
                         }
                     }
                 else:
-                    raise ValueError('Unsupported WKT literal: {}'.format(value.lexical_form))
+                    raise FormatterError('Unsupported WKT literal: {}'.format(value.lexical_form))
             elif value.datatype == rdf_langString:
                 result = {
                     '@type': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString',
@@ -556,6 +560,8 @@ class WikidataKnowledgeBase(KnowledgeBase):
                     _wikidata_to_schema[interpretation_result.context_predicate.iri]:
                         self._format_entity(interpretation_result.context_subject.iri, accept_language)
                 }
+            else:
+                _logger.info('Unmapped property: {}'.format(interpretation_result.context_predicate.iri))
         return result
 
     @lru_cache(maxsize=8192)
