@@ -373,7 +373,9 @@ class WikidataKnowledgeBase(KnowledgeBase):
 
         labels = [label.strip().lower() for label in labels]
         for distance in range(0, 3):
-            relations = self._relations_by_edit_distance(labels, language_code, distance)
+            # we do not want to be fuzzy with too small labels
+            labels_to_match = [l for l in labels if len(l) >= 3 * distance + 1]
+            relations = self._relations_by_edit_distance(labels_to_match, language_code, distance)
             if relations:
                 return list(relations)
         return []
