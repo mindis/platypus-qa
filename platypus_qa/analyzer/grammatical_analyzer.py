@@ -411,9 +411,9 @@ class GrammaticalAnalyzer:
     def _find_relations_with_pattern(self, label, nounified_patterns=None, range: Type = Type.top()) -> List[Select]:
         if nounified_patterns is None:
             nounified_patterns = ('{}',)
-        # TODO apply range
         relations = self._knowledge_base.relations_from_labels(
             (nounified_pattern.format(label) for nounified_pattern in nounified_patterns), self._language_code)
+        relations = [rel for rel in relations if rel.type[1] & range != Type.bottom()]
         _logger.info(
             'relation "{}" with nounifiers {} and range {} give a result result {} '.format(
                 label, nounified_patterns, range, [str(p) for p in relations]))
