@@ -396,16 +396,16 @@ class Term:
         function(self)
 
     def __str__(self) -> str:
-        raise ValueError('Term.__str__ is not implemented')
+        raise NotImplementedError('Term.__str__ is not implemented')
 
     def __eq__(self, other) -> bool:
-        raise ValueError('Term.__eq__ is not implemented')
+        raise NotImplementedError('Term.__eq__ is not implemented')
 
     def __hash__(self) -> int:
-        raise ValueError('Term.__hash__ is not implemented')
+        raise NotImplementedError('Term.__hash__ is not implemented')
 
     def __bool__(self) -> bool:
-        raise ValueError('Term.__bool__ is not implemented')
+        raise NotImplementedError('Term.__bool__ is not implemented')
 
     def __getitem__(self, key) -> 'Term':
         """
