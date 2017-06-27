@@ -46,7 +46,7 @@ class Entity:
 
     @property
     def score(self) -> int:
-        raise ValueError('Entity.score is not implemented')
+        return 0
 
     def __str__(self) -> str:
         return '<{}>'.format(self.iri)
@@ -89,7 +89,7 @@ schema_Place = Class('http://schema.org/Place', (owl_NamedIndividual,))
 
 
 class NamedIndividual(Entity):
-    def __init__(self, iri, types: Sequence['Class'] = (owl_Thing,)):
+    def __init__(self, iri: str, types: Sequence['Class'] = (owl_Thing, owl_NamedIndividual)):
         super().__init__(iri, types)
 
 

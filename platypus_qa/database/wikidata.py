@@ -27,6 +27,7 @@ from typing import Dict, List, Union, Optional, Tuple, Iterable
 
 import editdistance
 import requests
+
 from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
@@ -287,8 +288,8 @@ _property_sex = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual))
 _property_author = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P50', owl_NamedIndividual, xsd_dateTime))
-_item_male = ValueFormula(_WikidataItem({'@id': 'wd:Q6581097', '@type': ['NamedIndividual']}))
-_item_female = ValueFormula(_WikidataItem({'@id': 'wd:Q6581072', '@type': ['NamedIndividual']}))
+_item_male = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/wd:Q6581097'))
+_item_female = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581072'))
 _hadcoded_relations = {
     'en': {
         'son': Select((_s, _o), TripleFormula(_s, _property_child, _o) & TripleFormula(_o, _property_sex, _item_male)),
@@ -501,7 +502,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
             raise EvaluationError('Invalid term in SPARQL results serialization {}'.format(term))
         if term['type'] == 'uri':
             if term['value'].startswith('http://www.wikidata.org/entity/Q'):
-                return _WikidataItem({'@id': term['value']})
+                return NamedIndividual(term['value'])
             elif term['value'] in self._property_for_iri:
                 return self._property_for_iri[term['value']]
             else:
@@ -590,7 +591,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
     def get_label(self, entity: Entity, accept_language: str) -> Optional[str]:
         if accept_language in self._label_for_iri and entity.iri in self._label_for_iri[accept_language]:
             return self._label_for_iri[accept_language][entity.iri]
-        elif isinstance(entity, _WikidataItem):
+        elif entity.iri.startsWith('http://www.wikidata.org/entity/'):
             entity = self._format_entity(entity.iri, accept_language)
             if 'name' in entity:
                 return entity['name']

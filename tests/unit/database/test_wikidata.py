@@ -24,16 +24,16 @@ from decimal import Decimal
 from platypus_qa.database.formula import Select, VariableFormula, EqualityFormula, ValueFormula, TripleFormula, \
     ExistsFormula
 from platypus_qa.database.owl import RDFLangStringLiteral, XSDDecimalLiteral, XSDIntegerLiteral, rdf_langString, \
-    DatatypeProperty, xsd_decimal, ObjectProperty, owl_NamedIndividual
-from platypus_qa.database.wikidata import _WikidataItem, _WikidataQuerySparqlBuilder
+    DatatypeProperty, xsd_decimal, ObjectProperty, owl_NamedIndividual, NamedIndividual
+from platypus_qa.database.wikidata import _WikidataQuerySparqlBuilder
 
 _x = VariableFormula('x')
 _y = VariableFormula('y')
 _z = VariableFormula('z')
 _s = VariableFormula('s')
 _p = VariableFormula('p')
-_Q2 = ValueFormula(_WikidataItem({'@id': 'wd:Q2'}))
-_Q3 = ValueFormula(_WikidataItem({'@id': 'wd:Q3'}))
+_Q2 = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q2'))
+_Q3 = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q3'))
 _foo = ValueFormula(RDFLangStringLiteral('foo', 'fr'))
 _1 = ValueFormula(XSDIntegerLiteral(1))
 _2 = ValueFormula(XSDDecimalLiteral(Decimal(2)))
