@@ -996,14 +996,20 @@ class TripleFormula(Formula):
 
     def _variables_types(self) -> _TypeForVariables:
         result = _TypeForVariables()
+
+        # structural types
+        if isinstance(self.subject, VariableFormula):
+            result[self.subject] &= Type.from_entity(owl_Thing)
+        if isinstance(self.predicate, VariableFormula):
+            result[self.predicate] &= Type.from_entity(rdf_Property)
+
+        # domain and range
         if isinstance(self.predicate, ValueFormula):
             if isinstance(self.predicate.term, Property):
                 if isinstance(self.subject, VariableFormula):
                     result[self.subject] &= Type.from_entity(self.predicate.term.domain)
                 if isinstance(self.object, VariableFormula):
                     result[self.object] &= Type.from_entity(self.predicate.term.range)
-        elif isinstance(self.predicate, VariableFormula):
-            result[self.predicate] &= Type.from_entity(rdf_Property)
 
         return result
 
