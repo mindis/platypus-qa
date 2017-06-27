@@ -502,7 +502,7 @@ class ValueFormula(Formula):
     @property
     def type(self) -> Type:
         if isinstance(self.term, Entity):
-            return reduce(lambda a, b: a | b, (Type.from_entity(type_) for type_ in self.term.types))
+            return reduce(lambda a, b: a & b, (Type.from_entity(type_) for type_ in self.term.types))
         elif isinstance(self.term, Literal):
             return Type.from_entity(self.term.datatype)
         else:

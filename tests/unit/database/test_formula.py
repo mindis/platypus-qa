@@ -112,6 +112,8 @@ class _FormulaTest(unittest.TestCase):
     def testValueFormula(self):
         self.assertEqual(Type.from_entity(schema_Person),
                          ValueFormula(NamedIndividual('wd:Q42', (schema_Person,))).type)
+        self.assertEqual(Type.from_entity(schema_Person) & Type.from_entity(schema_Place),
+                         ValueFormula(NamedIndividual('wd:Q42', (schema_Person, schema_Place))).type)
         self.assertEqual(Type.from_entity(xsd_string), ValueFormula(XSDStringLiteral('foo')).type)
         self.assertTrue(true_formula)
         self.assertFalse(false_formula)
