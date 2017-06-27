@@ -786,6 +786,8 @@ class EqualityFormula(Formula):
         elif isinstance(left, ValueFormula) and isinstance(right, ValueFormula):
             return false_formula  # left != right
             # TODO: handle owl:sameAs and this kind of constructs?
+        elif left.type & right.type == Type.bottom():
+            return false_formula  # Not in the same set, it could only be false
         else:
             return super(EqualityFormula, cls).__new__(cls)
 

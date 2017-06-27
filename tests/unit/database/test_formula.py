@@ -123,6 +123,7 @@ class _FormulaTest(unittest.TestCase):
         self.assertEqual(true_formula, EqualityFormula(_x, _x))
         self.assertEqual(true_formula, EqualityFormula(_foo, _foo))
         self.assertEqual(false_formula, EqualityFormula(_foo, _bar))
+        self.assertEqual(false_formula, EqualityFormula(AddFormula(_0, _x), _2016))
 
     def testPlusFormula(self):
         self.assertEqual(AddFormula(_1, _2), _1 + _2)
