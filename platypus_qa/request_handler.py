@@ -92,7 +92,7 @@ class RequestHandler:
                     existing_results.add(result.result)
                     try:
                         results.append({
-                            'result': self._qa_handler.to_json_ld(result, accept_language),
+                            'result': self._qa_handler.knowledge_base.format_to_jsonld(result, accept_language),
                             'resultScore': interpretation.interpretation.score / 100,
                             'platypus:term': str(interpretation.interpretation)
                         })
