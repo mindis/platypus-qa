@@ -832,11 +832,12 @@ class EqualityFormula(Formula):
 
 
 class BinaryOrderOperatorFormula(Formula):
+    def __new__(cls, left: Formula, right: Formula):
+        if cls._get_type_for_ordering(left) == Type.bottom() or cls._get_type_for_ordering(right) == Type.bottom():
+            return false_formula  # No order
+        return super(BinaryOrderOperatorFormula, cls).__new__(cls)
+
     def __init__(self, left: Formula, right: Formula):
-        if self._get_type_for_ordering(left) == Type.bottom():
-            raise ValueError('Order operators expects an orderable left operand')
-        if self._get_type_for_ordering(right) == Type.bottom():
-            raise ValueError('Order operators expects and orderable right operand')
         self.left = left
         self.right = right
 
@@ -974,11 +975,12 @@ class ExistsFormula(Formula):
 
 
 class TripleFormula(Formula):
+    def __new__(cls, subject: Formula, predicate: Formula, _object: Formula):
+        if subject.type <= _literal_type or predicate.type & _property_type == Type.bottom():
+            return false_formula  # could not be true
+        return super(TripleFormula, cls).__new__(cls)
+
     def __init__(self, subject: Formula, predicate: Formula, _object: Formula):
-        if subject.type <= _literal_type:
-            raise ValueError('Triple subject should not be a literal')
-        if predicate.type & _property_type == Type.bottom():
-            raise ValueError('Triple predicate should be instance of rdf:Property')
         self.subject = subject
         self.predicate = predicate
         self.object = _object

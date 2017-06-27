@@ -198,31 +198,23 @@ class _FormulaTest(unittest.TestCase):
 
     def testGreaterFormula(self):
         self.assertEqual(GreaterFormula(_1, _2), _1 > _2)
-        with self.assertRaises(ValueError):
-            GreaterFormula(_1, _foo)
-        with self.assertRaises(ValueError):
-            GreaterFormula(_foo, _1)
+        self.assertEqual(false_formula, GreaterFormula(_1, _foo))
+        self.assertEqual(false_formula, GreaterFormula(_foo, _1))
 
     def testGreaterOrEqualFormula(self):
         self.assertEqual(GreaterOrEqualFormula(_1, _2), _1 >= _2)
-        with self.assertRaises(ValueError):
-            GreaterOrEqualFormula(_1, _foo)
-        with self.assertRaises(ValueError):
-            GreaterOrEqualFormula(_foo, _1)
+        self.assertEqual(false_formula, GreaterOrEqualFormula(_1, _foo))
+        self.assertEqual(false_formula, GreaterOrEqualFormula(_foo, _1))
 
     def testLowerFormula(self):
         self.assertEqual(LowerFormula(_1, _2), _1 < _2)
-        with self.assertRaises(ValueError):
-            LowerFormula(_1, _foo)
-        with self.assertRaises(ValueError):
-            LowerFormula(_foo, _1)
+        self.assertEqual(false_formula, LowerFormula(_1, _foo))
+        self.assertEqual(false_formula, LowerFormula(_foo, _1))
 
     def testLowerOrEqualFormula(self):
         self.assertEqual(LowerOrEqualFormula(_1, _2), _1 <= _2)
-        with self.assertRaises(ValueError):
-            LowerOrEqualFormula(_1, _foo)
-        with self.assertRaises(ValueError):
-            LowerOrEqualFormula(_foo, _1)
+        self.assertEquals(false_formula, LowerOrEqualFormula(_1, _foo))
+        self.assertEquals(false_formula, LowerOrEqualFormula(_foo, _1))
 
     def testExistsFormula(self):
         self.assertEqual(ExistsFormula(_x, TripleFormula(_x, _schema_name, _foo)),
@@ -255,10 +247,8 @@ class _FormulaTest(unittest.TestCase):
         self.assertEqual(false_formula, ExistsFormula(_x, EqualityFormula(_x, _foo) & EqualityFormula(_x, _false)))
 
     def testTripleFormula(self):
-        with self.assertRaises(ValueError):
-            TripleFormula(_0, _schema_name, _foo)
-        with self.assertRaises(ValueError):
-            TripleFormula(_JohnDoe, _1, _foo)
+        self.assertEqual(false_formula, TripleFormula(_0, _schema_name, _foo))
+        self.assertEqual(false_formula, TripleFormula(_JohnDoe, _1, _foo))
 
     def testSelect(self):
         self.assertEqual(
