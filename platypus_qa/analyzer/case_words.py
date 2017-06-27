@@ -18,16 +18,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Callable, Optional, Dict, Iterable
+from typing import Callable, Optional, Dict, Iterable, List
 
 from platypus_qa.database.formula import Select, VariableFormula, LowerFormula, ExistsFormula, GreaterFormula
 
 
 class CaseWord:
     def __init__(self, words: str,
-                 terms_by_modifiers: Dict[Iterable[str], Callable[[Select], Select]]):
+                 terms_by_modifiers: Dict[Iterable[str], Callable[[Select], Select]], properties: List[str] = ()):
         self.words = words
         self.terms_by_modifiers = terms_by_modifiers
+        self.properties = properties
 
     def __str__(self):
         return self.words
@@ -78,6 +79,7 @@ _case_words = {
         'in': CaseWord('for', {('{} in',): _predicate_object_term}),
         'of': CaseWord('of', {('{} of',): _predicate_object_term, ('{}',): _predicate_subject_term}),
         'on': CaseWord('on', {('{} on',): _predicate_object_term}),
+        'with': CaseWord('with', {('{} with',): _predicate_object_term}, ('actor',)),
     },
     'es': {
         'de': CaseWord('de', {('{} de',): _predicate_object_term, ('{}',): _predicate_subject_term}),

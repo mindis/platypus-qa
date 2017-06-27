@@ -189,6 +189,16 @@ class GrammaticalAnalyzer:
         _logger.info('main children {}'.format(' '.join(str([str(node) for node in children_to_parse]))))
 
         # meaningless words
+        # ...at the beggining of sentence
+        skip_number = 0
+        for child in left_children_to_parse:
+            if self._nodes_to_string(child.subtree).lower() in _meaningless_roots.get(self._language_code, ()):
+                skip_number += 1
+            else:
+                break
+        left_children_to_parse = left_children_to_parse[skip_number:]
+
+        # ...at the root
         if (self._language_code in _meaningless_roots or question_word and not left_children_to_parse) and \
                         node.word.lower() in _meaningless_roots[self._language_code] and \
                         len(children_to_parse) == 1:
@@ -300,6 +310,11 @@ class GrammaticalAnalyzer:
                             relations = [term(relation) for relation in main_relations]
                             results.extend(function(output_variable) for function in
                                            self._set_argument_to_relations(relations, child))
+                        for property in case.properties:
+                            main_relations = [r.swap_arguments() for r in
+                                              self._find_relations_with_pattern(property, range=expected_type)]
+                            results.extend(function(output_variable)
+                                           for function in self._set_argument_to_relations(main_relations, child))
                         to_intersect_elements.append(results)
 
             elif child.main_ud_dependency <= UDDependency.amod:
@@ -348,7 +363,7 @@ class GrammaticalAnalyzer:
 
         _logger.info('question word properties {}'.format(question_word.expected_properties))
         relations = list(chain.from_iterable(
-            self._knowledge_base.relations_from_label(label, self._language_code)
+            self._find_relations_with_pattern(label)
             for label in question_word.expected_properties
         ))
         result_variable = self._create_variable('result')
@@ -391,17 +406,18 @@ class GrammaticalAnalyzer:
             except Exception as e:
                 logging.getLogger('wornet').warn(e, exc_info=True)
         """
+        return list(set(relations))
 
+    def _find_relations_with_pattern(self, label, nounified_patterns=None, range: Type = Type.top()) -> List[Select]:
+        if nounified_patterns is None:
+            nounified_patterns = ('{}',)
+        # TODO apply range
+        relations = self._knowledge_base.relations_from_labels(
+            (nounified_pattern.format(label) for nounified_pattern in nounified_patterns), self._language_code)
         _logger.info(
             'relation "{}" with nounifiers {} and range {} give a result result {} '.format(
                 label, nounified_patterns, range, [str(p) for p in relations]))
-        return list(set(relations))
-
-    def _find_relations_with_pattern(self, label, nounified_patterns, range: Type):
-        if nounified_patterns is None:
-            nounified_patterns = ('{}',)
-        return self._knowledge_base.relations_from_labels(
-            (nounified_pattern.format(label) for nounified_pattern in nounified_patterns), self._language_code)
+        return relations
 
     def _literals_for_node(self, nodes, expected_type: Type):
         input_str = self._nodes_to_string(nodes)
@@ -436,7 +452,9 @@ class GrammaticalAnalyzer:
         start_node = None
         end_node = None
         for child in main_node.left_children:
-            if self._is_same_entity_dependency(child.main_ud_dependency):  # TODO: other dependencies?
+            if self._is_same_entity_dependency(child.main_ud_dependency) and \
+                            child.word.lower() not in _meaningless_roots.get(self._language_code,
+                                                                             ()):  # TODO: other dependencies?
                 start_node = child
                 break
             elif child == should_start_at_least:

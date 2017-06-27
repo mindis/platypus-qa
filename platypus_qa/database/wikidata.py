@@ -287,8 +287,10 @@ _property_child = ValueFormula(
 _property_sex = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual))
 _property_author = ValueFormula(
-    ObjectProperty('http://www.wikidata.org/prop/direct/P50', owl_NamedIndividual, xsd_dateTime))
-_item_male = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/wd:Q6581097'))
+    ObjectProperty('http://www.wikidata.org/prop/direct/P50', owl_NamedIndividual, owl_NamedIndividual))
+_property_librettist = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P87', owl_NamedIndividual, owl_NamedIndividual))
+_item_male = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581097'))
 _item_female = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581072'))
 _hadcoded_relations = {
     'en': {
@@ -299,22 +301,24 @@ _hadcoded_relations = {
         'identity': Select((_s, _o), EqualityFormula(_s, _o)),
         'definition': Select((_s, _o), EqualityFormula(_s, _o)),
         'born date': _relation_for_property(
-            ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
+            DatatypeProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
         'born location': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P19', owl_NamedIndividual, owl_NamedIndividual)),
         'dead date': _relation_for_property(
-            ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
+            DatatypeProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
         'dead location': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual)),
-        'wrote': Select((_s, _o), TripleFormula(_o, _property_author, _s))
+        'wrote': Select((_s, _o), TripleFormula(_o, _property_author, _s)),
+        'book by': Select((_s, _o),
+                          TripleFormula(_s, _property_author, _o) | TripleFormula(_s, _property_librettist, _o)),
     },
     'es': {
         'fecha de nació': _relation_for_property(
-            ObjectProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
+            DatatypeProperty('http://www.wikidata.org/prop/direct/P569', owl_NamedIndividual, xsd_dateTime)),
         'lugar de nació': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P19', owl_NamedIndividual, owl_NamedIndividual)),
         'fecha de muerto': _relation_for_property(
-            ObjectProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
+            DatatypeProperty('http://www.wikidata.org/prop/direct/P570', owl_NamedIndividual, xsd_dateTime)),
         'lugar de muerto': _relation_for_property(
             ObjectProperty('http://www.wikidata.org/prop/direct/P20', owl_NamedIndividual, owl_NamedIndividual)),
     }
