@@ -24,8 +24,6 @@ from collections import defaultdict
 from itertools import chain, product
 from typing import List, Iterable, Set
 
-from nltk.corpus import wordnet
-
 from platypus_qa.analyzer.case_words import get_case_word_from_str
 from platypus_qa.analyzer.literal_parser import parse_literal
 from platypus_qa.analyzer.question_words import get_question_word_from_str, OpenQuestionWord, QuestionWord
@@ -37,39 +35,6 @@ from platypus_qa.nlp.model import Sentence, NLPParser, Token, SimpleToken
 from platypus_qa.nlp.universal_dependencies import UDDependency, UDPOSTag
 
 _logger = logging.getLogger('grammatical_analyzer')
-
-_wordnet_language_codes = {
-    'en': 'eng',
-    'ar': 'arb',
-    'bg': 'bul',
-    'ca': 'cat',
-    'da': 'dan',
-    'el': 'ell',
-    'eu': 'eus',
-    'fa': 'fas',
-    'fi': 'fin',
-    'fr': 'fra',
-    'gl': 'glg',
-    'he': 'heb',
-    'hr': 'hrv',
-    'id': 'ind',
-    'it': 'ita',
-    'ja': 'jpn',
-    'nn': 'nno',
-    'nb': 'nob',
-    'pl': 'pol',
-    'pt': 'por',
-    'sl': 'slv',
-    'es': 'spa',
-    'sv': 'swe'
-}
-
-_wordnet_pos_tags = {
-    UDPOSTag.VERB: wordnet.VERB,
-    UDPOSTag.NOUN: wordnet.NOUN,
-    UDPOSTag.ADJ: wordnet.ADJ,
-    UDPOSTag.ADV: wordnet.ADV
-}
 
 _wordnet_hardcoded = {
     'fr': [
@@ -390,22 +355,6 @@ class GrammaticalAnalyzer:
                     if pattern.match(label):
                         relations = self._find_relations_with_pattern(noun, nounified_patterns, range)
 
-        """TODO: enable again?
-        if self._language_code in _wordnet_language_codes and nodes[0].ud_pos in _wordnet_pos_tags:
-            try:
-                synsets = wordnet.synsets(nodes[0].word, pos=_wordnet_pos_tags[nodes[0].ud_pos],
-                                          lang=_wordnet_language_codes[self._language_code])
-                nouns = self._nouns_for_synsets(synsets, self._language_code)
-                entities = list(chain.from_iterable(
-                    self._find_entities_with_pattern(noun, entity_lookup, nounified_patterns, self._language_code)
-                    for noun in nouns))
-                if not entities and '{}' in nounified_patterns:
-                    # try in english
-                    entities = list(chain.from_iterable(
-                        entity_lookup(noun, 'en') for noun in self._nouns_for_synsets(synsets, 'en')))
-            except Exception as e:
-                logging.getLogger('wornet').warn(e, exc_info=True)
-        """
         return list(set(relations))
 
     def _find_relations_with_pattern(self, label, nounified_patterns=None, range: Type = Type.top()) -> List[Select]:
@@ -427,18 +376,6 @@ class GrammaticalAnalyzer:
 
         variable = self._create_variable('value')
         return {Select(variable, EqualityFormula(variable, ValueFormula(literal, input_str))) for literal in literals}
-
-    @staticmethod
-    def _nouns_for_synsets(synsets, language_code: str):
-        lemmas = list(
-            chain.from_iterable(synset.lemmas(_wordnet_language_codes[language_code]) for synset in synsets))
-        derivationally_related_forms = list(
-            chain(chain.from_iterable(x.derivationally_related_forms() for x in lemmas), lemmas))
-        related_synsets = [lemma.synset() for lemma in derivationally_related_forms]
-        return list(chain.from_iterable(
-            synset.lemma_names(_wordnet_language_codes[language_code]) for synset in related_synsets if
-            synset.pos() == wordnet.NOUN)
-        )
 
     @staticmethod
     def _filter_not_main_dependencies(nodes):

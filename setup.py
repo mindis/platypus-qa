@@ -21,17 +21,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import logging
 
 from setuptools import setup, find_packages
-from setuptools.command.install import install
-
-
-class CustomInstall(install):
-    def run(self):
-        install.run(self)
-
-        import nltk
-        nltk.download('wordnet')
-        nltk.download('omw')
-
 
 with open('requirements.txt') as pf:
     install_requires = [s.strip() for s in pf]
@@ -58,11 +47,9 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Application'
     ],
     install_requires=install_requires,
-    setup_requires=['nltk>=3.0,<4.0'],
     dependency_links=[
         'git+https://github.com/s-i-newton/calchas.git#egg=calchas'
     ],
     packages=find_packages(),
-    cmdclass={'install': CustomInstall},
     test_suite='tests'
 )
