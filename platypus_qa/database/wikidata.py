@@ -392,10 +392,11 @@ class WikidataKnowledgeBase(KnowledgeBase):
     def _fill_relations_for_label(self, language_code: str):
         _logger.info('Loading Wikidata relations for {}'.format(language_code))
         results = self._execute_sparql_query(
-            'SELECT ?directProperty ?propertyType ?label { ' +
+            'SELECT ?directProperty ?propertyType ?label ?propertyLabel { ' +
             '?property wikibase:directClaim ?directProperty ; wikibase:propertyType ?propertyType . ' +
             '{ ?property rdfs:label ?label } UNION { ?property skos:altLabel ?label } ' +
-            'FILTER(LANG(?label) = "' + language_code + '" && ?propertyType != wikibase:WikibaseProperty) }'
+            'FILTER(LANG(?label) = "' + language_code + '" && ?propertyType != wikibase:WikibaseProperty) ' +
+            'SERVICE wikibase:label { bd:serviceParam wikibase:language "' + language_code + '". } }'
         )
         mapping = {}
         relations = {}
@@ -405,7 +406,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
                 property_iri = result['directProperty']['value']
                 property_type = result['propertyType']['value']
                 label = result['label']['value'].lower()
-                labels[property_iri] = result['label']['value']
+                labels[property_iri] = result['propertyLabel']['value']
                 if property_iri not in relations:
                     if property_iri not in self._property_for_iri:
                         if property_type not in _wikibase_property_types:
