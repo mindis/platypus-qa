@@ -542,7 +542,7 @@ class WikidataKnowledgeBase(KnowledgeBase):
             result = self._format_entity(value.iri, accept_language)
         elif isinstance(value, Literal):
             if value.datatype == geo_wktLiteral:
-                match = re.match('^Point\((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$', value.lexical_form.strip())
+                match = re.match('^POINT \((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$', value.lexical_form)
                 if match:
                     result = {
                         '@id': 'geo:{},{}'.format(match.group(2), match.group(1)),

@@ -22,8 +22,9 @@ import json
 import re
 from datetime import datetime, timezone, timedelta, date, time
 from decimal import Decimal
-
 from typing import Sequence, Union, Optional
+
+from pygeoif import geometry
 
 """
 Implementation of basic OWL for use in formulas
@@ -257,6 +258,8 @@ def build_literal(lexical_form: str, datatype: Optional[Union[Datatype, str]] = 
                               _parse_timezone(match.group(5), 'xsd:time'))
     elif datatype == xsd_string:
         return XSDStringLiteral(lexical_form)
+    elif datatype == geo_wktLiteral:
+        return GeoWKTLiteral(lexical_form)
     else:
         return UnknownLiteral(lexical_form, datatype)
 
@@ -528,6 +531,27 @@ class XSDTimeLiteral(Literal):
         :raise ValueError if not in time range
         """
         return time(self.hour, self.minute, self.second, 0, _timezone_to_python(self.timezone_offset))
+
+
+class GeoWKTLiteral(Literal):
+    def __init__(self, shape: Union[str, object, dict]):
+        try:
+            if isinstance(shape, str):
+                self.shape = geometry.from_wkt(shape.upper())
+            elif hasattr(shape, '__geo_interface__') or isinstance(shape, dict):
+                self.shape = geometry.as_shape(shape)
+            else:
+                raise ValueError('GeoWKTLiteral could not parse {}'.format(shape))
+        except NotImplementedError:
+            raise ValueError('GeoWKTLiteral could not parse {}'.format(shape))
+
+    @property
+    def lexical_form(self) -> str:
+        return self.shape.wkt
+
+    @property
+    def datatype(self) -> Datatype:
+        return geo_wktLiteral
 
 
 class UnknownLiteral(Literal):
