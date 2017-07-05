@@ -536,6 +536,31 @@ true_formula = ValueFormula(XSDBooleanLiteral(True))
 false_formula = ValueFormula(XSDBooleanLiteral(False))
 
 
+class ZeroOrMorePathFormula(Formula):
+    def __init__(self, path: Formula):
+        self.path = path
+
+    def substitute(self, var: VariableFormula, formula: Formula) -> 'ZeroOrMorePathFormula':
+        return ZeroOrMorePathFormula(self.path.substitute(var, formula))
+
+    @property
+    def type(self) -> Type:
+        return _property_type  # TODO: improve?
+
+    @property
+    def score(self) -> int:
+        return self.path.score
+
+    def __str__(self) -> str:
+        return '{}*'.format(str(self.path))
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, ValueFormula) and self.path == other.path
+
+    def __hash__(self) -> int:
+        return 2 * hash(self.path)
+
+
 class BinaryArithmeticOperatorFormula(Formula):
     def __init__(self, left: Formula, right: Formula):
         if left.type & _numeric_type == Type.bottom():

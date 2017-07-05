@@ -22,7 +22,7 @@ import unittest
 from decimal import Decimal
 
 from platypus_qa.database.formula import Select, VariableFormula, EqualityFormula, ValueFormula, TripleFormula, \
-    ExistsFormula
+    ExistsFormula, ZeroOrMorePathFormula
 from platypus_qa.database.owl import RDFLangStringLiteral, XSDDecimalLiteral, XSDIntegerLiteral, rdf_langString, \
     DatatypeProperty, xsd_decimal, ObjectProperty, owl_NamedIndividual, NamedIndividual
 from platypus_qa.database.wikidata import _WikidataQuerySparqlBuilder
@@ -108,6 +108,10 @@ _sparql_to_tree = [
     (
         'ASK {\n\t?x wdt:P3 "foo"@fr .\n}',
         ExistsFormula(_x, TripleFormula(_x, _P3, _foo))
+    ),
+    (
+        'ASK {\n\t?x wdt:P3* "foo"@fr .\n}',
+        ExistsFormula(_x, TripleFormula(_x, ZeroOrMorePathFormula(_P3), _foo))
     )
 ]
 

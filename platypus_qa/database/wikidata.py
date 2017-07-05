@@ -31,7 +31,7 @@ from pygeoif import Point
 from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
     GreaterFormula, GreaterOrEqualFormula, LowerOrEqualFormula, LowerFormula, BinaryOrderOperatorFormula, \
-    BinaryArithmeticOperatorFormula, Type
+    BinaryArithmeticOperatorFormula, Type, ZeroOrMorePathFormula
 from platypus_qa.database.model import KnowledgeBase, FormatterError, QAInterpretationResult, EvaluationError
 from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
     XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, xsd_integer, Datatype, Property, XSDDateLiteral, \
@@ -147,6 +147,8 @@ class _WikidataQuerySparqlBuilder:
             return self._serialize_rdf_term(value.term)
         elif isinstance(value, VariableFormula):
             return str(value)
+        elif isinstance(value, ZeroOrMorePathFormula):
+            return '{}*'.format(self._serialize_triple_argument(value.path))
         else:
             raise EvaluationError('Not able to serialize triple argument {}'.format(value))
 
@@ -293,6 +295,8 @@ _property_librettist = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P87', owl_NamedIndividual, owl_NamedIndividual))
 _property_cast_member = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P161', owl_NamedIndividual, owl_NamedIndividual))
+_property_subclass_of = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P279', owl_NamedIndividual, owl_NamedIndividual))
 _item_male = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581097'))
 _item_female = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581072'))
 _hadcoded_relations = {
@@ -328,14 +332,31 @@ _hadcoded_relations = {
     }
 }
 
-_type_relations = [_relation_for_property(p) for p in [
-    ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual),  # sex
-    ObjectProperty('http://www.wikidata.org/prop/direct/P27', owl_NamedIndividual, owl_NamedIndividual),  # citizenship
-    ObjectProperty('http://www.wikidata.org/prop/direct/P31', owl_NamedIndividual, owl_NamedIndividual),  # instance of
-    ObjectProperty('http://www.wikidata.org/prop/direct/P105', owl_NamedIndividual, owl_NamedIndividual),  # taxon rank
-    ObjectProperty('http://www.wikidata.org/prop/direct/P106', owl_NamedIndividual, owl_NamedIndividual),  # occupation
-    ObjectProperty('http://www.wikidata.org/prop/direct/P136', owl_NamedIndividual, owl_NamedIndividual)  # genre
-]]
+
+def _relation_with_subclass_of_closure(property: ObjectProperty):
+    _class = VariableFormula('class')
+    return Select((_s, _o), TripleFormula(_s, ValueFormula(property), _class) &
+                  TripleFormula(_class, ZeroOrMorePathFormula(_property_subclass_of), _o))
+
+
+_type_relations = [
+    _relation_for_property(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P21', owl_NamedIndividual, owl_NamedIndividual)),  # sex
+    _relation_for_property(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P27', owl_NamedIndividual, owl_NamedIndividual)),
+    # citizenship
+    _relation_with_subclass_of_closure(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P31', owl_NamedIndividual, owl_NamedIndividual)),
+    # instance of
+    _relation_for_property(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P105', owl_NamedIndividual, owl_NamedIndividual)),
+    # taxon rank
+    _relation_with_subclass_of_closure(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P106', owl_NamedIndividual, owl_NamedIndividual)),
+    # occupation
+    _relation_with_subclass_of_closure(
+        ObjectProperty('http://www.wikidata.org/prop/direct/P136', owl_NamedIndividual, owl_NamedIndividual))  # genre
+]
 
 
 class WikidataKnowledgeBase(KnowledgeBase):
