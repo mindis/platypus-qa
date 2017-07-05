@@ -291,6 +291,8 @@ _property_author = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P50', owl_NamedIndividual, owl_NamedIndividual))
 _property_librettist = ValueFormula(
     ObjectProperty('http://www.wikidata.org/prop/direct/P87', owl_NamedIndividual, owl_NamedIndividual))
+_property_cast_member = ValueFormula(
+    ObjectProperty('http://www.wikidata.org/prop/direct/P161', owl_NamedIndividual, owl_NamedIndividual))
 _item_male = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581097'))
 _item_female = ValueFormula(NamedIndividual('http://www.wikidata.org/entity/Q6581072'))
 _hadcoded_relations = {
@@ -312,6 +314,7 @@ _hadcoded_relations = {
         'wrote': Select((_s, _o), TripleFormula(_o, _property_author, _s)),
         'book by': Select((_s, _o),
                           TripleFormula(_s, _property_author, _o) | TripleFormula(_s, _property_librettist, _o)),
+        'play in': Select((_s, _o), TripleFormula(_o, _property_cast_member, _s)),
     },
     'es': {
         'fecha de nació': _relation_for_property(
