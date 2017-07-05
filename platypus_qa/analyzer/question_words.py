@@ -183,7 +183,11 @@ _question_words = {
         'comment': OpenQuestionWord('comment', property_modifiers=(
             'circonstance de {}', 'circonstance du {}', 'cause de {}', 'cause {}', '{} car', '{} à cause de')),
         'combien': OpenQuestionWord('combien', expected_type=quantity_type),
+        'de combien': OpenQuestionWord('combien', expected_type=quantity_type),
+        'de quand': _quand,
+        'de qui': OpenQuestionWord('de qui'),
         'de quoi': OpenQuestionWord('de quoi'),
+        'd\'où': _où,
         'donne': OpenQuestionWord('donne'),
         'donne moi': OpenQuestionWord('donne moi'),
         'donne nous': OpenQuestionWord('donne nous'),

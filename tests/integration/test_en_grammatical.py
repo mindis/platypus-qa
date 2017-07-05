@@ -56,7 +56,9 @@ _individuals = {
     'Le Petit Prince': [_schema_Book],
     'Vol de Nuit': [_schema_Book],
     'Douglas': [owl_NamedIndividual],
-    'apple': [owl_NamedIndividual]
+    'apple': [owl_NamedIndividual],
+    'actors': [owl_NamedIndividual],
+    'Big Bang Theory': [_schema_Movie]
 }
 
 _object_properties = {
@@ -76,7 +78,8 @@ _object_properties = {
     'type': owl_NamedIndividual,
     'last name': owl_NamedIndividual,
     'eats': owl_NamedIndividual,
-    'heir of': schema_Person
+    'heir of': schema_Person,
+    'play in': _schema_Movie
 }
 
 _data_properties = {
@@ -185,9 +188,13 @@ _parsed_sentences = {
         Select(_x,
                TripleFormula(_x, _get_property('born in'), ValueFormula(XSDDateTimeLiteral(1960, 0, 0, 0, 0, 0)))),
 
-    'WHo is born after 2016?':
+    'Who is born after 2016?':
         Select(_x, ExistsFormula(_y, TripleFormula(_x, _get_property('born in'), _y) &
                                  GreaterFormula(_y, ValueFormula(XSDDateTimeLiteral(2016, 0, 0, 0, 0, 0))))),
+
+    'Which actors play in Big Bang Theory?':
+        Select(_x, TripleFormula(_x, _get_property('play in'), _get_individual('Big Bang Theory')) &
+               TripleFormula(_x, _get_property('type'), _get_individual('actors'))),
 }
 '''
 'Give us the France\'s prime minister.':

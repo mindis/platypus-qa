@@ -136,18 +136,23 @@ class GrammaticalAnalyzer:
 
         # We try other nodes
         question_word = None
+        type_constraints = None
         left_children_to_parse = node.left_children
         question_nodes = []
         for child in node.left_children:
             question_nodes.extend(child.subtree)
-            question_nodes_trimmed = self._trim(question_nodes)
-            if not question_nodes_trimmed:
-                question_nodes_trimmed = question_nodes
-            new_question_word = get_question_word_from_str(self._nodes_to_string(question_nodes_trimmed),
+            question_nodes = self._trim(question_nodes, [UDPOSTag.PUNCT], [])
+            for i in reversed(range(1, len(question_nodes) + 1)):
+                question_word = get_question_word_from_str(self._nodes_to_string(question_nodes[:i]),
                                                            self._language_code)
-            if new_question_word is not None:
-                question_word = new_question_word
+                if question_word is not None:
+                    if question_nodes[i:]:
+                        type_constraints = self._individuals_for_nodes(question_nodes[i:])
+                    break
+
+            if question_word is not None:
                 left_children_to_parse = self._nodes_after(left_children_to_parse, child)
+                break
 
         children_to_parse = self._filter_not_main_dependencies(left_children_to_parse + node.right_children)
         _logger.info('question word {}'.format(question_word))
@@ -210,6 +215,16 @@ class GrammaticalAnalyzer:
                 if nounified_patterns is not None:
                     possibles |= self._build_tree_with_children(children_to_process, label_nodes, expected_type,
                                                                 nounified_patterns)
+
+        # we apply type constraints
+        if type_constraints:
+            type_variable = VariableFormula('type')
+            possibles = {Select(possible.args, ExistsFormula(type_variable, possible.body
+                                                             & type_relation(possible.args[0])(type_variable)
+                                                             & type_constraint(type_variable)))
+                         for possible in possibles
+                         for type_constraint in type_constraints
+                         for type_relation in self._knowledge_base.type_relations()}
 
         return possibles
 
@@ -416,31 +431,30 @@ class GrammaticalAnalyzer:
         return self._trim(entity_nodes)
 
     @staticmethod
-    def _trim_left(subtree):
+    def _trim_left(subtree, trimmed_pos=_pos_trimmed_for_label, trimmed_dep=_dependencies_trimmed_for_label):
         start = 0
         while start < len(subtree):
-            if subtree[start].ud_pos in _pos_trimmed_for_label or (subtree[start].main_ud_dependency is not None and
-                                                                           subtree[
-                                                                               start].main_ud_dependency.root_dep in _dependencies_trimmed_for_label):
+            if subtree[start].ud_pos in trimmed_pos or (subtree[start].main_ud_dependency is not None and
+                                                                subtree[
+                                                                    start].main_ud_dependency.root_dep in trimmed_dep):
                 start += 1
             else:
                 break
         return subtree[start:]
 
     @staticmethod
-    def _trim_right(subtree):
+    def _trim_right(subtree, trimmed_pos=_pos_trimmed_for_label, trimmed_dep=_dependencies_trimmed_for_label):
         end = len(subtree) - 1
         while end >= 0:
-            if subtree[end].ud_pos in _pos_trimmed_for_label or (subtree[end].main_ud_dependency is not None and
-                                                                         subtree[
-                                                                             end].main_ud_dependency.root_dep in _dependencies_trimmed_for_label):
+            if subtree[end].ud_pos in trimmed_pos or (subtree[end].main_ud_dependency is not None and
+                                                              subtree[end].main_ud_dependency.root_dep in trimmed_dep):
                 end -= 1
             else:
                 break
         return subtree[:end + 1]
 
-    def _trim(self, subtree):
-        return self._trim_right(self._trim_left(subtree))
+    def _trim(self, subtree, trimmed_pos=_pos_trimmed_for_label, trimmed_dep=_dependencies_trimmed_for_label):
+        return self._trim_right(self._trim_left(subtree, trimmed_pos, trimmed_dep), trimmed_pos, trimmed_dep)
 
     @staticmethod
     def _nodes_before(nodes, node, include: bool = False):

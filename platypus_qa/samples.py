@@ -115,7 +115,9 @@ SAMPLE_QUESTIONS = {
         'Who is the president of Eritrea?',
         'Where is Syngman Rhee buried?',
         'Who is the king of the Netherlands?',
-        'Whom did Lance Bass marry?'
+        'Whom did Lance Bass marry?',
+        'Which electronics companies were founded in Beijing?',
+        'In which city are the headquarters of the United Nations?'
     },
     'es': {
         'Barack Obama',
