@@ -19,7 +19,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 import logging
-import re
 import urllib
 from functools import lru_cache
 from json import JSONDecodeError
@@ -27,6 +26,7 @@ from typing import Dict, List, Union, Optional, Tuple, Iterable
 
 import editdistance
 import requests
+from pygeoif import Point
 
 from platypus_qa.database.formula import Term, Select, AndFormula, OrFormula, EqualityFormula, TripleFormula, \
     VariableFormula, Formula, ExistsFormula, ValueFormula, NotFormula, AddFormula, SubFormula, MulFormula, DivFormula, \
@@ -36,7 +36,8 @@ from platypus_qa.database.model import KnowledgeBase, FormatterError, QAInterpre
 from platypus_qa.database.owl import NamedIndividual, DatatypeProperty, ObjectProperty, owl_Thing, Class, Literal, \
     XSDBooleanLiteral, XSDAnyURILiteral, XSDDateTimeLiteral, xsd_integer, Datatype, Property, XSDDateLiteral, \
     XSDGYearLiteral, XSDGYearMonthLiteral, build_literal, geo_wktLiteral, xsd_string, rdf_langString, \
-    xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean
+    xsd_decimal, Entity, xsd_dateTime, rdf_Property, owl_NamedIndividual, xsd_anyURI, xsd_double, xsd_boolean, \
+    GeoWKTLiteral, RDFLangStringLiteral
 
 _logger = logging.getLogger('wikidata')
 
@@ -541,21 +542,20 @@ class WikidataKnowledgeBase(KnowledgeBase):
         if isinstance(value, Entity):
             result = self._format_entity(value.iri, accept_language)
         elif isinstance(value, Literal):
-            if value.datatype == geo_wktLiteral:
-                match = re.match('^POINT \((-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)\)$', value.lexical_form)
-                if match:
+            if isinstance(value, GeoWKTLiteral):
+                if isinstance(value.shape, Point):
                     result = {
-                        '@id': 'geo:{},{}'.format(match.group(2), match.group(1)),
+                        '@id': 'geo:{},{}'.format(value.shape.y, value.shape.x),
                         '@type': 'GeoCoordinates',
-                        'latitude': float(match.group(2)),
-                        'longitude': float(match.group(1)),
+                        'latitude': float(value.shape.y),
+                        'longitude': float(value.shape.x),
                         '@context': {
                             '@vocab': 'http://schema.org/'
                         }
                     }
                 else:
                     raise FormatterError('Unsupported WKT literal: {}'.format(value.lexical_form))
-            elif value.datatype == rdf_langString:
+            elif isinstance(value, RDFLangStringLiteral):
                 result = {
                     '@type': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#langString',
                     'name': value.to_jsonld(),
