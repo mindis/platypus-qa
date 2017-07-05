@@ -18,6 +18,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+# Some sample questions are from QALD under MIT license https://github.com/ag-sc/QALD
 SAMPLE_QUESTIONS = {
     'en': {
         'What is the birth date of George Washington?',
@@ -106,7 +107,15 @@ SAMPLE_QUESTIONS = {
         'List books by William Shakespeare',
         'Who is the author of A Game of Thrones?',
         'List shows with Hugh Laurie',
-        'List movies with Hugh Laurie'
+        'List movies with Hugh Laurie',
+        'Who was the doctoral supervisor of Albert Einstein?',
+        'What is in a chocolate chip cookie?',
+        'What is the capital of Cameroon?',
+        'Who wrote Harry Potter?',
+        'Who is the president of Eritrea?',
+        'Where is Syngman Rhee buried?',
+        'Who is the king of the Netherlands?',
+        'Whom did Lance Bass marry?'
     },
     'es': {
         'Barack Obama',
